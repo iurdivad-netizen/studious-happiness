@@ -31,9 +31,69 @@
   #message button { font-size: 15px; padding: 8px 24px; }
   #wind-arrow { font-size: 20px; }
   .tank-hp { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 1px; }
+
+  /* ── Setup screen ─────────────────────────────────────────── */
+  #setup-screen {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: #000; z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .setup-inner {
+    border: 2px solid #0f0; padding: 28px 36px; width: 480px; max-width: 96vw;
+  }
+  .setup-inner h1 {
+    color: #ff0; text-align: center; font-size: 26px;
+    letter-spacing: 5px; margin-bottom: 4px;
+  }
+  .setup-subtitle {
+    color: #555; text-align: center; font-size: 11px;
+    letter-spacing: 2px; margin-bottom: 22px;
+  }
+  .setup-section-label {
+    color: #888; font-size: 11px; letter-spacing: 2px;
+    margin-bottom: 10px; border-bottom: 1px solid #222; padding-bottom: 4px;
+  }
+  .player-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px; padding: 7px 10px; border: 1px solid #1a1a1a;
+  }
+  .player-row:hover { border-color: #333; }
+  .p-swatch { width: 13px; height: 13px; border-radius: 2px; flex-shrink: 0; }
+  .p-name-input {
+    background: #111; color: #0f0; border: 1px solid #444;
+    padding: 4px 8px; font-family: inherit; font-size: 13px; width: 140px;
+    outline: none;
+  }
+  .p-name-input:focus { border-color: #0f0; }
+  .ai-toggle { display: flex; margin-left: auto; }
+  .ai-toggle input[type=radio] { display: none; }
+  .ai-toggle label {
+    cursor: pointer; padding: 3px 10px; border: 1px solid #333;
+    font-size: 11px; letter-spacing: 1px; color: #666;
+  }
+  .ai-toggle label:first-of-type { border-right: none; }
+  .ai-toggle input[type=radio]:checked + label {
+    background: #0f0; color: #000; border-color: #0f0;
+  }
+  .setup-start-btn {
+    display: block; width: 100%; margin-top: 22px;
+    font-size: 15px; padding: 10px; letter-spacing: 3px;
+  }
 </style>
 </head>
 <body>
+
+<!-- Setup Screen -->
+<div id="setup-screen">
+  <div class="setup-inner">
+    <h1>SCORCHED EARTH</h1>
+    <p class="setup-subtitle">TANK COMBAT</p>
+    <p class="setup-section-label">PLAYERS</p>
+    <div id="player-rows"></div>
+    <button class="setup-start-btn" onclick="beginGame()">START GAME</button>
+  </div>
+</div>
+
 <div id="container">
   <div id="hud">
     <span id="turn-label" class="current-player">PLAYER 1</span>
@@ -49,7 +109,7 @@
     <div id="message">
       <h2 id="msg-title">GAME OVER</h2>
       <p id="msg-body"></p>
-      <button id="msg-btn" onclick="startNewGame()">NEW GAME</button>
+      <button id="msg-btn" onclick="showSetupScreen()">NEW GAME</button>
     </div>
   </div>
   <div id="controls">
@@ -96,12 +156,20 @@ const WEAPONS = [
 const PLAYER_COLORS = ['#0f0','#f00','#ff0','#f0f'];
 const PLAYER_NAMES  = ['Player 1','Player 2','Player 3','Player 4'];
 
+// ─── Setup config (persists between games) ────────────────────────────────────
+let setupConfig = [
+  { name: 'Player 1', isAI: false },
+  { name: 'Player 2', isAI: false },
+  { name: 'Player 3', isAI: true  },
+  { name: 'Player 4', isAI: true  },
+];
+
 // ─── State ────────────────────────────────────────────────────────────────────
 let canvas, ctx, W, H;
-let terrain = []; // height array, one per x pixel
+let terrain = [];
 let players = [];
 let currentPlayer = 0;
-let wind = 0; // pixels/s horizontal
+let wind = 0;
 let projectiles = [];
 let explosions = [];
 let gameRunning = false;
@@ -110,11 +178,12 @@ let round = 1;
 let roundsTotal = 5;
 
 // ─── Player structure ─────────────────────────────────────────────────────────
-function makePlayer(i) {
+function makePlayer(i, name, isAI) {
   return {
     id: i,
-    name: PLAYER_NAMES[i],
+    name: name || PLAYER_NAMES[i],
     color: PLAYER_COLORS[i],
+    isAI: !!isAI,
     x: 0, y: 0,
     hp: 100,
     cash: 500,
@@ -123,14 +192,49 @@ function makePlayer(i) {
     weapon: 0,
     alive: true,
     score: 0,
-    inventory: [99,10,3,2,1,3,2], // ammo per weapon
+    inventory: [99,10,3,2,1,3,2],
   };
+}
+
+// ─── Setup screen ─────────────────────────────────────────────────────────────
+function showSetupScreen() {
+  document.getElementById('message').style.display = 'none';
+  gameRunning = false;
+  const container = document.getElementById('player-rows');
+  container.innerHTML = '';
+  setupConfig.forEach((cfg, i) => {
+    const color = PLAYER_COLORS[i];
+    const row = document.createElement('div');
+    row.className = 'player-row';
+    row.innerHTML = `
+      <div class="p-swatch" style="background:${color}"></div>
+      <input class="p-name-input" type="text" id="pname-${i}"
+             value="${cfg.name}" maxlength="12" placeholder="Player ${i+1}">
+      <div class="ai-toggle">
+        <input type="radio" name="ptype-${i}" id="phuman-${i}" value="human" ${!cfg.isAI ? 'checked' : ''}>
+        <label for="phuman-${i}">HUMAN</label>
+        <input type="radio" name="ptype-${i}" id="pai-${i}" value="ai" ${cfg.isAI ? 'checked' : ''}>
+        <label for="pai-${i}">AI</label>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+  document.getElementById('setup-screen').style.display = 'flex';
+}
+
+function beginGame() {
+  // Read config from setup form
+  setupConfig = setupConfig.map((_, i) => ({
+    name: (document.getElementById(`pname-${i}`).value.trim() || `Player ${i+1}`),
+    isAI: document.getElementById(`pai-${i}`).checked,
+  }));
+  document.getElementById('setup-screen').style.display = 'none';
+  initGame();
 }
 
 // ─── Terrain generation ────────────────────────────────────────────────────────
 function generateTerrain() {
   terrain = new Array(W).fill(0);
-  // midpoint displacement
   const arr = new Float32Array(W);
   arr[0] = H * 0.5;
   arr[W-1] = H * 0.5;
@@ -148,7 +252,6 @@ function generateTerrain() {
   for (let x = 0; x < W; x++) {
     terrain[x] = Math.max(H * 0.15, Math.min(H * 0.85, arr[x]));
   }
-  // smooth
   for (let s = 0; s < 4; s++) {
     for (let x = 1; x < W-1; x++) {
       terrain[x] = (terrain[x-1] + terrain[x] + terrain[x+1]) / 3;
@@ -157,16 +260,11 @@ function generateTerrain() {
 }
 
 function placeTanks() {
-  const xs = [];
   const spacing = W / (NUM_PLAYERS + 1);
   for (let i = 0; i < NUM_PLAYERS; i++) {
     const bx = Math.round(spacing * (i + 1));
     const rx = Math.max(20, Math.min(W-20, bx + Math.round((Math.random()-0.5)*spacing*0.4)));
-    xs.push(rx);
-  }
-  // flatten terrain under tanks
-  for (let i = 0; i < NUM_PLAYERS; i++) {
-    const cx = xs[i];
+    const cx = rx;
     const ty = terrain[cx];
     for (let dx = -10; dx <= 10; dx++) {
       if (cx+dx >= 0 && cx+dx < W) terrain[cx+dx] = ty;
@@ -183,7 +281,6 @@ function drawSky() {
   grad.addColorStop(1, '#001440');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, H);
-  // stars
   ctx.fillStyle = '#fff';
   for (let i = 0; i < 80; i++) {
     const sx = (i * 97 + 13) % W;
@@ -204,7 +301,6 @@ function drawTerrain() {
   grad.addColorStop(1, '#2a1a08');
   ctx.fillStyle = grad;
   ctx.fill();
-  // grass line
   ctx.strokeStyle = '#3d7a2a';
   ctx.lineWidth = 2;
   ctx.beginPath();
@@ -216,22 +312,18 @@ function drawTerrain() {
 function drawTank(p) {
   if (!p.alive) return;
   const x = p.x, y = p.y;
-  // body
   ctx.fillStyle = p.color;
   ctx.fillRect(x - TANK_W/2, y - TANK_H, TANK_W, TANK_H);
-  // turret dome
   ctx.beginPath();
   ctx.arc(x, y - TANK_H, 5, Math.PI, 0);
   ctx.fillStyle = p.color;
   ctx.fill();
-  // wheels (decorative)
   ctx.fillStyle = '#333';
   for (let i = -6; i <= 6; i += 4) {
     ctx.beginPath();
     ctx.arc(x + i, y, 3, 0, Math.PI*2);
     ctx.fill();
   }
-  // barrel
   const rad = (p.angle * Math.PI) / 180;
   const bx = x + Math.cos(Math.PI - rad) * BARREL_LEN;
   const by = (y - TANK_H) - Math.sin(rad) * BARREL_LEN;
@@ -241,12 +333,12 @@ function drawTank(p) {
   ctx.moveTo(x, y - TANK_H);
   ctx.lineTo(bx, by);
   ctx.stroke();
-  // player label
+  // name + AI badge
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 10px Courier New';
   ctx.textAlign = 'center';
-  ctx.fillText(p.name, x, y - TANK_H - 8);
-  // hp bar
+  const label = p.isAI ? p.name + ' [AI]' : p.name;
+  ctx.fillText(label, x, y - TANK_H - 8);
   const barW = 30, barH = 4;
   ctx.fillStyle = '#300';
   ctx.fillRect(x - barW/2, y - TANK_H - 19, barW, barH);
@@ -277,7 +369,6 @@ function drawExplosions() {
 
 function drawProjectiles() {
   for (const p of projectiles) {
-    // trail
     if (p.trail && p.trail.length > 1) {
       ctx.strokeStyle = p.trailColor || '#fa0';
       ctx.lineWidth = 2;
@@ -318,11 +409,8 @@ function blastCrater(cx, cy, radius) {
     terrain[x] = Math.max(terrain[x], cy + depth);
     terrain[x] = Math.min(terrain[x], H - 2);
   }
-  // settle tanks
   for (const p of players) {
-    if (p.alive) {
-      p.y = getTerrainY(p.x);
-    }
+    if (p.alive) p.y = getTerrainY(p.x);
   }
 }
 
@@ -347,7 +435,6 @@ function explodeAt(cx, cy, wep, ownerId) {
   explosions.push({ x:cx, y:cy, radius:wep.radius, color:wep.color, life:45, maxLife:45, phase:0 });
 
   if (wep.napalm) {
-    // spread fire
     for (let i = 0; i < 8; i++) {
       const angle = (Math.random() * Math.PI);
       const spd = 60 + Math.random()*80;
@@ -387,6 +474,75 @@ function explodeAt(cx, cy, wep, ownerId) {
       }
     }
   }
+}
+
+// ─── AI ───────────────────────────────────────────────────────────────────────
+function aiTakeTurn() {
+  if (!gameRunning || animating) return;
+  const p = players[currentPlayer];
+  if (!p.alive || !p.isAI) return;
+
+  const enemies = players.filter(e => e.alive && e.id !== p.id);
+  if (!enemies.length) return;
+
+  // Pick the nearest enemy
+  const target = enemies.reduce((best, e) =>
+    Math.abs(e.x - p.x) < Math.abs(best.x - p.x) ? e : best, enemies[0]);
+
+  const rdx = target.x - p.x;                     // positive = target is to the right
+  const rdy = target.y - (p.y - TANK_H);           // positive = target is below barrel
+
+  let solvedAngle = null;
+  let solvedPower = 50;
+
+  // Try powers from moderate to high; pick first that yields a valid ballistic solution
+  for (const power of [50, 60, 40, 70, 30, 80, 90]) {
+    if (Math.abs(rdx) < 2) {
+      // Target directly above/below — fire straight up
+      solvedAngle = 90;
+      solvedPower = power;
+      break;
+    }
+    const speed = power * 4;
+    // Quadratic in tan(rad): k*u² + rdx*u + (k - rdy) = 0
+    // where k = 0.5*G*rdx²/speed²
+    const k = 0.5 * GRAVITY * rdx * rdx / (speed * speed);
+    const disc = rdx * rdx - 4 * k * (k - rdy);
+    if (disc < 0) continue;
+
+    const sqrtDisc = Math.sqrt(disc);
+    const u1 = (-rdx + sqrtDisc) / (2 * k);
+    const u2 = (-rdx - sqrtDisc) / (2 * k);
+    // Choose flatter (smaller |tan|) trajectory
+    const u = Math.abs(u1) <= Math.abs(u2) ? u1 : u2;
+
+    // Convert tan(rad) back to game angle
+    // For rdx>0 (right target) rad must be in Q2 (PI/2..PI); for rdx<0 in Q1 (0..PI/2)
+    const rad = rdx >= 0 ? Math.PI + Math.atan(u) : Math.atan(u);
+    const angle = rad * 180 / Math.PI;
+
+    if (angle >= 5 && angle <= 175) {
+      solvedAngle = angle;
+      solvedPower = power;
+      break;
+    }
+  }
+
+  if (solvedAngle === null) {
+    // Fallback if no analytic solution found
+    solvedAngle = rdx > 0 ? 135 : 45;
+    solvedPower = 60;
+  }
+
+  // Add imperfection noise so AI isn't a perfect shot
+  const angleNoise = (Math.random() - 0.5) * 22;
+  const powerNoise = Math.round((Math.random() - 0.5) * 12);
+  p.angle = Math.max(5, Math.min(175, Math.round(solvedAngle + angleNoise)));
+  p.power = Math.max(15, Math.min(100, solvedPower + powerNoise));
+
+  syncSliders();
+  updateHUD();
+  setTimeout(fire, 700 + Math.random() * 500);
 }
 
 // ─── Fire ─────────────────────────────────────────────────────────────────────
@@ -430,7 +586,6 @@ function loop(ts) {
   const dt = Math.min((ts - lastTime) / 1000, 0.05);
   lastTime = ts;
 
-  // update explosions
   for (let i = explosions.length-1; i >= 0; i--) {
     const ex = explosions[i];
     ex.life--;
@@ -438,16 +593,13 @@ function loop(ts) {
     if (ex.life <= 0) explosions.splice(i, 1);
   }
 
-  // update projectiles
   for (let i = projectiles.length-1; i >= 0; i--) {
     const proj = projectiles[i];
     proj.trail.push({ x: proj.x, y: proj.y });
     if (proj.trail.length > 18) proj.trail.shift();
 
     proj.vx += wind * dt * 0.5;
-    if (!proj.roller) {
-      proj.vy += GRAVITY * dt;
-    }
+    if (!proj.roller) proj.vy += GRAVITY * dt;
     proj.x += proj.vx * dt;
     proj.y += proj.vy * dt;
     proj.life--;
@@ -455,7 +607,6 @@ function loop(ts) {
     const ty = getTerrainY(proj.x);
 
     if (proj.roller) {
-      // roll along ground
       if (proj.y >= ty) {
         proj.y = ty;
         proj.vy = 0;
@@ -483,7 +634,7 @@ function loop(ts) {
     }
   }
 
-  render();
+  if (gameRunning || terrain.length > 0) render();
 
   if (projectiles.length === 0 && explosions.length === 0 && animating) {
     animating = false;
@@ -513,13 +664,16 @@ function nextTurn() {
   }
   updateHUD();
   updateWeaponSelect();
+
+  if (players[currentPlayer].isAI) {
+    document.getElementById('fire-btn').disabled = true;
+    setTimeout(aiTakeTurn, 800 + Math.random() * 400);
+  }
 }
 
 function checkWin() {
   const alive = players.filter(p => p.alive);
-  if (alive.length <= 1) {
-    endGame(alive[0]);
-  }
+  if (alive.length <= 1) endGame(alive[0]);
 }
 
 function endGame(winner) {
@@ -527,7 +681,6 @@ function endGame(winner) {
   if (winner) {
     showMsg(`${winner.name} WINS!`, `Score: ${winner.score} | Cash: $${winner.cash}`, true);
   } else {
-    // find highest score
     const best = players.slice().sort((a,b) => b.score - a.score)[0];
     showMsg(`${best.name} WINS!`, `Score: ${best.score} | Cash: $${best.cash}`, true);
   }
@@ -536,8 +689,9 @@ function endGame(winner) {
 function showMsg(title, body, newGame) {
   document.getElementById('msg-title').textContent = title;
   document.getElementById('msg-body').textContent = body;
-  document.getElementById('msg-btn').textContent = newGame ? 'NEW GAME' : 'OK';
-  document.getElementById('msg-btn').onclick = newGame ? startNewGame : () => {
+  const btn = document.getElementById('msg-btn');
+  btn.textContent = newGame ? 'NEW GAME' : 'OK';
+  btn.onclick = newGame ? showSetupScreen : () => {
     document.getElementById('message').style.display = 'none';
   };
   document.getElementById('message').style.display = 'block';
@@ -546,7 +700,8 @@ function showMsg(title, body, newGame) {
 // ─── HUD ──────────────────────────────────────────────────────────────────────
 function updateHUD() {
   const p = players[currentPlayer];
-  document.getElementById('turn-label').textContent = p.name.toUpperCase();
+  const aiSuffix = p.isAI ? ' [AI]' : '';
+  document.getElementById('turn-label').textContent = p.name.toUpperCase() + aiSuffix;
   document.getElementById('turn-label').style.color = p.color;
   document.getElementById('hp-val').textContent = p.hp;
   document.getElementById('cash-val').textContent = p.cash;
@@ -556,8 +711,10 @@ function updateHUD() {
   document.getElementById('power-slider').value = p.power;
   document.getElementById('power-val').textContent = p.power;
 
-  // scores
-  const sc = players.map(pl => `<span style="color:${pl.color}">${pl.name.split(' ')[1]}:${pl.score}</span>`).join(' ');
+  const sc = players.map(pl => {
+    const short = pl.name.length > 8 ? pl.name.substring(0, 7) + '…' : pl.name;
+    return `<span style="color:${pl.color}">${short}:${pl.score}</span>`;
+  }).join(' ');
   document.getElementById('scores-hud').innerHTML = sc;
 }
 
@@ -599,6 +756,7 @@ document.getElementById('weapon-select').addEventListener('change', e => {
 
 document.addEventListener('keydown', e => {
   if (!gameRunning || animating) return;
+  if (players[currentPlayer].isAI) return; // block input during AI turn
   const p = players[currentPlayer];
   if (e.key === 'ArrowLeft' || e.key === 'a') { p.angle = Math.max(0, p.angle - 2); syncSliders(); }
   else if (e.key === 'ArrowRight' || e.key === 'd') { p.angle = Math.min(180, p.angle + 2); syncSliders(); }
@@ -616,12 +774,11 @@ function syncSliders() {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
-function startNewGame() {
-  document.getElementById('message').style.display = 'none';
+function initGame() {
   W = canvas.width  = canvas.parentElement.clientWidth;
   H = canvas.height = canvas.parentElement.clientHeight;
-  players = Array.from({length: NUM_PLAYERS}, (_, i) => makePlayer(i));
-  generateTerrain();
+  players = setupConfig.map((cfg, i) => makePlayer(i, cfg.name, cfg.isAI));
+  generateTerrain();   // fresh random terrain every match
   placeTanks();
   currentPlayer = 0;
   round = 1;
@@ -634,6 +791,12 @@ function startNewGame() {
   updateWindHUD();
   updateWeaponSelect();
   document.getElementById('fire-btn').disabled = false;
+
+  // Kick off AI if first player is AI
+  if (players[currentPlayer].isAI) {
+    document.getElementById('fire-btn').disabled = true;
+    setTimeout(aiTakeTurn, 1000);
+  }
 }
 
 window.addEventListener('resize', () => {
@@ -648,8 +811,12 @@ window.addEventListener('resize', () => {
 window.onload = () => {
   canvas = document.getElementById('canvas');
   ctx = canvas.getContext('2d');
-  startNewGame();
+  // Size canvas so background terrain renders behind the setup screen
+  W = canvas.width  = canvas.parentElement.clientWidth;
+  H = canvas.height = canvas.parentElement.clientHeight;
+  generateTerrain();
   requestAnimationFrame(loop);
+  showSetupScreen();
 };
 </script>
 </body>
