@@ -25,44 +25,49 @@
   button:hover { background: #0a0; }
   button:disabled { background: #555; color: #888; cursor: default; }
   select { background: #222; color: #0f0; border: 1px solid #0f0; padding: 3px 6px; font-family: inherit; font-size: 13px; }
-  #message { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); border: 2px solid #0f0; padding: 20px 36px; text-align: center; font-size: 18px; z-index: 10; display: none; }
+  #message { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,0.88); border: 2px solid #0f0; padding: 20px 36px; text-align: center; font-size: 18px; z-index: 10; display: none; }
   #message h2 { color: #ff0; margin-bottom: 10px; }
   #message p { color: #0f0; margin-bottom: 14px; font-size: 14px; }
   #message button { font-size: 15px; padding: 8px 24px; }
   #wind-arrow { font-size: 20px; }
-  .tank-hp { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 1px; }
 
-  /* ── Setup screen ─────────────────────────────────────────── */
-  #setup-screen {
+  /* ── Shared overlay styles ──────────────────────────────────── */
+  .overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: #000; z-index: 200;
-    display: flex; align-items: center; justify-content: center;
+    display: flex; align-items: flex-start; justify-content: center;
+    overflow-y: auto; padding: 24px 0;
   }
-  .setup-inner {
-    border: 2px solid #0f0; padding: 28px 36px; width: 480px; max-width: 96vw;
+  .overlay-inner {
+    border: 2px solid #0f0; padding: 26px 32px; width: 560px; max-width: 97vw;
   }
-  .setup-inner h1 {
-    color: #ff0; text-align: center; font-size: 26px;
-    letter-spacing: 5px; margin-bottom: 4px;
+  .overlay-title {
+    color: #ff0; text-align: center; font-size: 22px;
+    letter-spacing: 4px; margin-bottom: 4px;
   }
-  .setup-subtitle {
+  .overlay-sub {
     color: #555; text-align: center; font-size: 11px;
-    letter-spacing: 2px; margin-bottom: 22px;
+    letter-spacing: 2px; margin-bottom: 20px;
   }
-  .setup-section-label {
+  .section-label {
     color: #888; font-size: 11px; letter-spacing: 2px;
-    margin-bottom: 10px; border-bottom: 1px solid #222; padding-bottom: 4px;
+    margin-bottom: 8px; border-bottom: 1px solid #222; padding-bottom: 4px;
   }
+  .big-btn {
+    display: block; width: 100%; margin-top: 20px;
+    font-size: 15px; padding: 10px; letter-spacing: 3px;
+  }
+
+  /* ── Setup screen ───────────────────────────────────────────── */
   .player-row {
     display: flex; align-items: center; gap: 10px;
-    margin-bottom: 10px; padding: 7px 10px; border: 1px solid #1a1a1a;
+    margin-bottom: 8px; padding: 7px 10px; border: 1px solid #1a1a1a;
   }
   .player-row:hover { border-color: #333; }
   .p-swatch { width: 13px; height: 13px; border-radius: 2px; flex-shrink: 0; }
   .p-name-input {
     background: #111; color: #0f0; border: 1px solid #444;
-    padding: 4px 8px; font-family: inherit; font-size: 13px; width: 140px;
-    outline: none;
+    padding: 4px 8px; font-family: inherit; font-size: 13px; width: 140px; outline: none;
   }
   .p-name-input:focus { border-color: #0f0; }
   .ai-toggle { display: flex; margin-left: auto; }
@@ -72,25 +77,69 @@
     font-size: 11px; letter-spacing: 1px; color: #666;
   }
   .ai-toggle label:first-of-type { border-right: none; }
-  .ai-toggle input[type=radio]:checked + label {
-    background: #0f0; color: #000; border-color: #0f0;
+  .ai-toggle input[type=radio]:checked + label { background: #0f0; color: #000; border-color: #0f0; }
+  .matches-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 14px; padding: 8px 10px; border: 1px solid #1a1a1a;
   }
-  .setup-start-btn {
-    display: block; width: 100%; margin-top: 22px;
-    font-size: 15px; padding: 10px; letter-spacing: 3px;
+  .matches-row label { color: #888; font-size: 12px; letter-spacing: 1px; }
+  .matches-row select { background: #111; color: #ff0; border: 1px solid #444; padding: 4px 10px; font-weight: bold; }
+
+  /* ── Shop screen ────────────────────────────────────────────── */
+  .shop-cash-row { display: flex; gap: 6px; margin-bottom: 14px; }
+  .shop-pcash {
+    flex: 1; border: 1px solid #222; padding: 6px 4px;
+    font-size: 11px; text-align: center; line-height: 1.6;
   }
+  .shop-pcash .pcash-val { display: block; color: #ff0; font-size: 14px; font-weight: bold; }
+  .shop-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .shop-tbl th { color: #666; font-size: 10px; letter-spacing: 1px; border-bottom: 1px solid #333; padding: 5px 5px; text-align: center; }
+  .shop-tbl th.wh { text-align: left; }
+  .shop-tbl td { padding: 5px 5px; border-bottom: 1px solid #111; text-align: center; vertical-align: middle; }
+  .shop-tbl td.wname { text-align: left; color: #0f0; white-space: nowrap; }
+  .shop-tbl td.wcost { color: #ff0; }
+  .shop-qty { display: inline-block; min-width: 22px; color: #0f0; }
+  .shop-btn {
+    background: #030; color: #0f0; border: 1px solid #0a0;
+    padding: 2px 7px; font-family: inherit; font-size: 11px; cursor: pointer; margin-left: 3px;
+  }
+  .shop-btn:hover:not(:disabled) { background: #060; }
+  .shop-btn:disabled { border-color: #222; color: #333; cursor: default; background: #000; }
+  .shop-note { color: #444; font-size: 11px; text-align: center; margin-top: 10px; }
 </style>
 </head>
 <body>
 
 <!-- Setup Screen -->
-<div id="setup-screen">
-  <div class="setup-inner">
-    <h1>SCORCHED EARTH</h1>
-    <p class="setup-subtitle">TANK COMBAT</p>
-    <p class="setup-section-label">PLAYERS</p>
+<div id="setup-screen" class="overlay">
+  <div class="overlay-inner">
+    <h1 class="overlay-title">SCORCHED EARTH</h1>
+    <p class="overlay-sub">TANK COMBAT</p>
+    <p class="section-label">PLAYERS</p>
     <div id="player-rows"></div>
-    <button class="setup-start-btn" onclick="beginGame()">START GAME</button>
+    <div class="matches-row">
+      <label>MATCHES PER GAME</label>
+      <select id="matches-sel">
+        <option value="3">3</option>
+        <option value="5" selected>5</option>
+        <option value="7">7</option>
+        <option value="10">10</option>
+      </select>
+    </div>
+    <button class="big-btn" onclick="beginGame()">START GAME</button>
+  </div>
+</div>
+
+<!-- Shop Screen -->
+<div id="shop-screen" class="overlay" style="display:none">
+  <div class="overlay-inner">
+    <h2 class="overlay-title" id="shop-title">MATCH 1 COMPLETE</h2>
+    <p class="overlay-sub" id="shop-sub"></p>
+    <p class="section-label">ARSENAL SHOP — BUY WEAPONS FOR NEXT MATCH</p>
+    <div class="shop-cash-row" id="shop-cash-row"></div>
+    <table class="shop-tbl" id="shop-tbl"></table>
+    <p class="shop-note">Free weapons (Baby Missile, Missile) are replenished for all players each match.</p>
+    <button class="big-btn" id="shop-go-btn" onclick="startNextMatch()">START MATCH <span id="shop-next-lbl">2</span></button>
   </div>
 </div>
 
@@ -99,7 +148,7 @@
     <span id="turn-label" class="current-player">PLAYER 1</span>
     <span class="player-info"><span class="hud-label">HP:</span><span class="hud-val" id="hp-val">100</span></span>
     <span class="player-info"><span class="hud-label">CASH:$</span><span class="hud-val" id="cash-val">0</span></span>
-    <span class="player-info"><span class="hud-label">ROUND:</span><span class="hud-val" id="round-val">1</span></span>
+    <span class="player-info"><span class="hud-label">MATCH:</span><span class="hud-val" id="match-val">1/5</span></span>
     <span style="flex:1"></span>
     <span class="player-info"><span id="wind-arrow">→</span>&nbsp;<span class="hud-label">WIND:</span><span class="hud-val" id="wind-val">0</span></span>
     <span class="player-info" id="scores-hud"></span>
@@ -128,7 +177,7 @@
       <select id="weapon-select"></select>
     </div>
     <button id="fire-btn" onclick="fire()">FIRE!</button>
-    <span style="font-size:11px;color:#555">← → adjust angle &nbsp;|&nbsp; [ ] power &nbsp;|&nbsp; SPACE fire</span>
+    <span style="font-size:11px;color:#555">← → angle &nbsp;|&nbsp; [ ] power &nbsp;|&nbsp; SPACE fire</span>
   </div>
 </div>
 
@@ -137,34 +186,35 @@
 const NUM_PLAYERS = 4;
 const TANK_W = 16, TANK_H = 10;
 const BARREL_LEN = 12;
-const GRAVITY = 120; // px/s²
+const GRAVITY = 120;
 const FPS = 60;
-const TERRAIN_ROUGHNESS = 8;
 
-// ─── Weapon definitions ───────────────────────────────────────────────────────
+// ─── Weapons ──────────────────────────────────────────────────────────────────
 const WEAPONS = [
-  { name:'Baby Missile',  cost:0,   radius:18, damage:25,  projectiles:1, spread:0,   color:'#ff0',  trail:'#fa0' },
-  { name:'Missile',       cost:0,   radius:28, damage:40,  projectiles:1, spread:0,   color:'#f80',  trail:'#f40' },
-  { name:'MIRV',          cost:150, radius:22, damage:30,  projectiles:5, spread:0.3, color:'#f0f',  trail:'#a0a' },
-  { name:'Napalm',        cost:200, radius:45, damage:55,  projectiles:1, spread:0,   color:'#f40',  trail:'#f80', napalm:true },
-  { name:'Nuke',          cost:500, radius:90, damage:100, projectiles:1, spread:0,   color:'#fff',  trail:'#ff0' },
-  { name:'Dirt Ball',     cost:50,  radius:30, damage:0,   projectiles:1, spread:0,   color:'#840',  trail:'#640', dirt:true },
-  { name:'Roller',        cost:100, radius:20, damage:35,  projectiles:1, spread:0,   color:'#0ff',  trail:'#08f', roller:true },
+  { name:'Baby Missile', cost:0,   radius:18, damage:25,  projectiles:1, spread:0,   color:'#ff0', trail:'#fa0' },
+  { name:'Missile',      cost:0,   radius:28, damage:40,  projectiles:1, spread:0,   color:'#f80', trail:'#f40' },
+  { name:'MIRV',         cost:150, radius:22, damage:30,  projectiles:5, spread:0.3, color:'#f0f', trail:'#a0a' },
+  { name:'Napalm',       cost:200, radius:45, damage:55,  projectiles:1, spread:0,   color:'#f40', trail:'#f80', napalm:true },
+  { name:'Nuke',         cost:500, radius:90, damage:100, projectiles:1, spread:0,   color:'#fff', trail:'#ff0' },
+  { name:'Dirt Ball',    cost:50,  radius:30, damage:0,   projectiles:1, spread:0,   color:'#840', trail:'#640', dirt:true },
+  { name:'Roller',       cost:100, radius:20, damage:35,  projectiles:1, spread:0,   color:'#0ff', trail:'#08f', roller:true },
 ];
 
-// ─── Colors per player ────────────────────────────────────────────────────────
 const PLAYER_COLORS = ['#0f0','#f00','#ff0','#f0f'];
 const PLAYER_NAMES  = ['Player 1','Player 2','Player 3','Player 4'];
 
-// ─── Setup config (persists between games) ────────────────────────────────────
-let setupConfig = [
-  { name: 'Player 1', isAI: false },
-  { name: 'Player 2', isAI: false },
-  { name: 'Player 3', isAI: true  },
-  { name: 'Player 4', isAI: true  },
-];
+// ─── Setup config ─────────────────────────────────────────────────────────────
+let setupConfig = {
+  players: [
+    { name:'Player 1', isAI:false },
+    { name:'Player 2', isAI:false },
+    { name:'Player 3', isAI:true  },
+    { name:'Player 4', isAI:true  },
+  ],
+  matches: 5,
+};
 
-// ─── State ────────────────────────────────────────────────────────────────────
+// ─── Game state ───────────────────────────────────────────────────────────────
 let canvas, ctx, W, H;
 let terrain = [];
 let players = [];
@@ -174,10 +224,10 @@ let projectiles = [];
 let explosions = [];
 let gameRunning = false;
 let animating = false;
-let round = 1;
-let roundsTotal = 5;
+let matchNum = 1;
+let matchesTotal = 5;
 
-// ─── Player structure ─────────────────────────────────────────────────────────
+// ─── Player factory ───────────────────────────────────────────────────────────
 function makePlayer(i, name, isAI) {
   return {
     id: i,
@@ -186,13 +236,13 @@ function makePlayer(i, name, isAI) {
     isAI: !!isAI,
     x: 0, y: 0,
     hp: 100,
-    cash: 500,
+    cash: 0,          // start every game with no money
     angle: i < 2 ? 45 : 135,
     power: 50,
     weapon: 0,
     alive: true,
     score: 0,
-    inventory: [99,10,3,2,1,3,2],
+    inventory: [99, 5, 1, 1, 0, 1, 1], // paid weapons start low; free ones replenish each match
   };
 }
 
@@ -200,62 +250,63 @@ function makePlayer(i, name, isAI) {
 function showSetupScreen() {
   document.getElementById('message').style.display = 'none';
   gameRunning = false;
+
   const container = document.getElementById('player-rows');
   container.innerHTML = '';
-  setupConfig.forEach((cfg, i) => {
-    const color = PLAYER_COLORS[i];
+  setupConfig.players.forEach((cfg, i) => {
     const row = document.createElement('div');
     row.className = 'player-row';
     row.innerHTML = `
-      <div class="p-swatch" style="background:${color}"></div>
+      <div class="p-swatch" style="background:${PLAYER_COLORS[i]}"></div>
       <input class="p-name-input" type="text" id="pname-${i}"
              value="${cfg.name}" maxlength="12" placeholder="Player ${i+1}">
       <div class="ai-toggle">
-        <input type="radio" name="ptype-${i}" id="phuman-${i}" value="human" ${!cfg.isAI ? 'checked' : ''}>
+        <input type="radio" name="ptype-${i}" id="phuman-${i}" value="human" ${!cfg.isAI?'checked':''}>
         <label for="phuman-${i}">HUMAN</label>
-        <input type="radio" name="ptype-${i}" id="pai-${i}" value="ai" ${cfg.isAI ? 'checked' : ''}>
+        <input type="radio" name="ptype-${i}" id="pai-${i}" value="ai" ${cfg.isAI?'checked':''}>
         <label for="pai-${i}">AI</label>
-      </div>
-    `;
+      </div>`;
     container.appendChild(row);
   });
+
+  document.getElementById('matches-sel').value = setupConfig.matches;
   document.getElementById('setup-screen').style.display = 'flex';
 }
 
 function beginGame() {
-  // Read config from setup form
-  setupConfig = setupConfig.map((_, i) => ({
-    name: (document.getElementById(`pname-${i}`).value.trim() || `Player ${i+1}`),
+  setupConfig.players = setupConfig.players.map((_, i) => ({
+    name: document.getElementById(`pname-${i}`).value.trim() || `Player ${i+1}`,
     isAI: document.getElementById(`pai-${i}`).checked,
   }));
+  setupConfig.matches = +document.getElementById('matches-sel').value;
   document.getElementById('setup-screen').style.display = 'none';
   initGame();
 }
 
-// ─── Terrain generation ────────────────────────────────────────────────────────
+// ─── Terrain generation ───────────────────────────────────────────────────────
 function generateTerrain() {
   terrain = new Array(W).fill(0);
   const arr = new Float32Array(W);
-  arr[0] = H * 0.5;
-  arr[W-1] = H * 0.5;
+  // Randomise endpoints so the map never looks the same
+  arr[0]   = H * (0.3 + Math.random() * 0.4);
+  arr[W-1] = H * (0.3 + Math.random() * 0.4);
   let step = W;
-  let scale = H * 0.4;
+  let scale = H * 0.55;   // higher than before → taller peaks/valleys
   while (step > 1) {
     const half = step >> 1;
     for (let x = half; x < W; x += step) {
       arr[x] = (arr[x - half] + arr[x + half < W ? x + half : W-1]) / 2
                + (Math.random() * 2 - 1) * scale;
     }
-    scale *= 0.55;
+    scale *= 0.68;         // decay slower → more high-frequency detail retained
     step = half;
   }
   for (let x = 0; x < W; x++) {
-    terrain[x] = Math.max(H * 0.15, Math.min(H * 0.85, arr[x]));
+    terrain[x] = Math.max(H * 0.1, Math.min(H * 0.9, arr[x]));
   }
-  for (let s = 0; s < 4; s++) {
-    for (let x = 1; x < W-1; x++) {
-      terrain[x] = (terrain[x-1] + terrain[x] + terrain[x+1]) / 3;
-    }
+  // Only 1 smoothing pass (was 4) so slopes stay sharp
+  for (let x = 1; x < W-1; x++) {
+    terrain[x] = (terrain[x-1] + terrain[x] + terrain[x+1]) / 3;
   }
 }
 
@@ -263,8 +314,7 @@ function placeTanks() {
   const spacing = W / (NUM_PLAYERS + 1);
   for (let i = 0; i < NUM_PLAYERS; i++) {
     const bx = Math.round(spacing * (i + 1));
-    const rx = Math.max(20, Math.min(W-20, bx + Math.round((Math.random()-0.5)*spacing*0.4)));
-    const cx = rx;
+    const cx = Math.max(20, Math.min(W-20, bx + Math.round((Math.random()-0.5)*spacing*0.4)));
     const ty = terrain[cx];
     for (let dx = -10; dx <= 10; dx++) {
       if (cx+dx >= 0 && cx+dx < W) terrain[cx+dx] = ty;
@@ -274,7 +324,7 @@ function placeTanks() {
   }
 }
 
-// ─── Drawing ─────────────────────────────────────────────────────────────────
+// ─── Drawing ──────────────────────────────────────────────────────────────────
 function drawSky() {
   const grad = ctx.createLinearGradient(0, 0, 0, H);
   grad.addColorStop(0, '#000820');
@@ -283,9 +333,7 @@ function drawSky() {
   ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = '#fff';
   for (let i = 0; i < 80; i++) {
-    const sx = (i * 97 + 13) % W;
-    const sy = (i * 137 + 7) % (H * 0.6);
-    ctx.fillRect(sx, sy, 1, 1);
+    ctx.fillRect((i * 97 + 13) % W, (i * 137 + 7) % (H * 0.6), 1, 1);
   }
 }
 
@@ -316,7 +364,6 @@ function drawTank(p) {
   ctx.fillRect(x - TANK_W/2, y - TANK_H, TANK_W, TANK_H);
   ctx.beginPath();
   ctx.arc(x, y - TANK_H, 5, Math.PI, 0);
-  ctx.fillStyle = p.color;
   ctx.fill();
   ctx.fillStyle = '#333';
   for (let i = -6; i <= 6; i += 4) {
@@ -324,42 +371,37 @@ function drawTank(p) {
     ctx.arc(x + i, y, 3, 0, Math.PI*2);
     ctx.fill();
   }
-  const rad = (p.angle * Math.PI) / 180;
-  const bx = x + Math.cos(Math.PI - rad) * BARREL_LEN;
-  const by = (y - TANK_H) - Math.sin(rad) * BARREL_LEN;
+  const rad = p.angle * Math.PI / 180;
   ctx.strokeStyle = p.color;
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(x, y - TANK_H);
-  ctx.lineTo(bx, by);
+  ctx.lineTo(x + Math.cos(Math.PI - rad) * BARREL_LEN, (y - TANK_H) - Math.sin(rad) * BARREL_LEN);
   ctx.stroke();
-  // name + AI badge
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 10px Courier New';
   ctx.textAlign = 'center';
-  const label = p.isAI ? p.name + ' [AI]' : p.name;
-  ctx.fillText(label, x, y - TANK_H - 8);
-  const barW = 30, barH = 4;
+  ctx.fillText(p.isAI ? p.name + ' [AI]' : p.name, x, y - TANK_H - 8);
+  const bw = 30, bh = 4;
   ctx.fillStyle = '#300';
-  ctx.fillRect(x - barW/2, y - TANK_H - 19, barW, barH);
+  ctx.fillRect(x - bw/2, y - TANK_H - 19, bw, bh);
   ctx.fillStyle = p.hp > 50 ? '#0f0' : p.hp > 25 ? '#ff0' : '#f00';
-  ctx.fillRect(x - barW/2, y - TANK_H - 19, barW * p.hp / 100, barH);
+  ctx.fillRect(x - bw/2, y - TANK_H - 19, bw * p.hp / 100, bh);
   ctx.strokeStyle = '#888';
   ctx.lineWidth = 1;
-  ctx.strokeRect(x - barW/2, y - TANK_H - 19, barW, barH);
+  ctx.strokeRect(x - bw/2, y - TANK_H - 19, bw, bh);
 }
 
 function drawExplosions() {
   for (const ex of explosions) {
-    const alpha = ex.life / ex.maxLife;
     ctx.save();
-    ctx.globalAlpha = alpha;
-    const grad = ctx.createRadialGradient(ex.x, ex.y, 0, ex.x, ex.y, ex.radius * ex.phase);
-    grad.addColorStop(0, '#fff');
-    grad.addColorStop(0.2, '#ff8');
-    grad.addColorStop(0.5, ex.color || '#f80');
-    grad.addColorStop(1, 'rgba(255,0,0,0)');
-    ctx.fillStyle = grad;
+    ctx.globalAlpha = ex.life / ex.maxLife;
+    const g = ctx.createRadialGradient(ex.x, ex.y, 0, ex.x, ex.y, ex.radius * ex.phase);
+    g.addColorStop(0, '#fff');
+    g.addColorStop(0.2, '#ff8');
+    g.addColorStop(0.5, ex.color || '#f80');
+    g.addColorStop(1, 'rgba(255,0,0,0)');
+    ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(ex.x, ex.y, ex.radius * ex.phase, 0, Math.PI*2);
     ctx.fill();
@@ -395,56 +437,41 @@ function render() {
   drawProjectiles();
 }
 
-// ─── Physics ─────────────────────────────────────────────────────────────────
+// ─── Physics ──────────────────────────────────────────────────────────────────
 function getTerrainY(x) {
   const xi = Math.round(x);
-  if (xi < 0 || xi >= W) return H;
-  return terrain[xi];
+  return (xi < 0 || xi >= W) ? H : terrain[xi];
 }
 
 function blastCrater(cx, cy, radius) {
   for (let x = Math.max(0, cx - radius); x < Math.min(W, cx + radius); x++) {
-    const dx = x - cx;
-    const depth = Math.sqrt(Math.max(0, radius*radius - dx*dx));
-    terrain[x] = Math.max(terrain[x], cy + depth);
-    terrain[x] = Math.min(terrain[x], H - 2);
+    const depth = Math.sqrt(Math.max(0, radius*radius - (x-cx)*(x-cx)));
+    terrain[x] = Math.min(H-2, Math.max(terrain[x], cy + depth));
   }
-  for (const p of players) {
-    if (p.alive) p.y = getTerrainY(p.x);
-  }
+  for (const p of players) { if (p.alive) p.y = getTerrainY(p.x); }
 }
 
 function dirtUp(cx, cy, radius) {
   for (let x = Math.max(0, cx - radius); x < Math.min(W, cx + radius); x++) {
-    const dx = x - cx;
-    const depth = Math.sqrt(Math.max(0, radius*radius - dx*dx)) * 0.6;
-    terrain[x] = Math.min(terrain[x], cy - depth);
-    terrain[x] = Math.max(terrain[x], 5);
+    const depth = Math.sqrt(Math.max(0, radius*radius - (x-cx)*(x-cx))) * 0.6;
+    terrain[x] = Math.max(5, Math.min(terrain[x], cy - depth));
   }
-  for (const p of players) {
-    if (p.alive) p.y = getTerrainY(p.x);
-  }
+  for (const p of players) { if (p.alive) p.y = getTerrainY(p.x); }
 }
 
 function explodeAt(cx, cy, wep, ownerId) {
-  if (wep.dirt) {
-    dirtUp(cx, cy, wep.radius);
-  } else {
-    blastCrater(cx, cy, wep.radius);
-  }
+  wep.dirt ? dirtUp(cx, cy, wep.radius) : blastCrater(cx, cy, wep.radius);
   explosions.push({ x:cx, y:cy, radius:wep.radius, color:wep.color, life:45, maxLife:45, phase:0 });
 
   if (wep.napalm) {
     for (let i = 0; i < 8; i++) {
-      const angle = (Math.random() * Math.PI);
-      const spd = 60 + Math.random()*80;
+      const a = Math.random() * Math.PI;
+      const spd = 60 + Math.random() * 80;
       projectiles.push({
         x:cx, y:cy,
-        vx: Math.cos(angle) * spd,
-        vy: -Math.abs(Math.sin(angle)) * spd * 0.5 - 30,
-        weapon: { ...wep, radius: wep.radius*0.4, damage: wep.damage*0.5, napalm:false },
-        ownerId, color:'#f80', trailColor:'#f40',
-        trail:[], life:120,
+        vx: Math.cos(a)*spd, vy: -Math.abs(Math.sin(a))*spd*0.5 - 30,
+        weapon: {...wep, radius:wep.radius*0.4, damage:wep.damage*0.5, napalm:false},
+        ownerId, color:'#f80', trailColor:'#f40', trail:[], life:120,
       });
     }
     return;
@@ -484,65 +511,50 @@ function aiTakeTurn() {
 
   const enemies = players.filter(e => e.alive && e.id !== p.id);
   if (!enemies.length) return;
+  const target = enemies.reduce((b, e) => Math.abs(e.x-p.x) < Math.abs(b.x-p.x) ? e : b, enemies[0]);
 
-  // Pick the nearest enemy
-  const target = enemies.reduce((best, e) =>
-    Math.abs(e.x - p.x) < Math.abs(best.x - p.x) ? e : best, enemies[0]);
+  const rdx = target.x - p.x;
+  const rdy = target.y - (p.y - TANK_H);
+  let solvedAngle = null, solvedPower = 50;
 
-  const rdx = target.x - p.x;                     // positive = target is to the right
-  const rdy = target.y - (p.y - TANK_H);           // positive = target is below barrel
-
-  let solvedAngle = null;
-  let solvedPower = 50;
-
-  // Try powers from moderate to high; pick first that yields a valid ballistic solution
   for (const power of [50, 60, 40, 70, 30, 80, 90]) {
-    if (Math.abs(rdx) < 2) {
-      // Target directly above/below — fire straight up
-      solvedAngle = 90;
-      solvedPower = power;
-      break;
-    }
+    if (Math.abs(rdx) < 2) { solvedAngle = 90; solvedPower = power; break; }
     const speed = power * 4;
-    // Quadratic in tan(rad): k*u² + rdx*u + (k - rdy) = 0
-    // where k = 0.5*G*rdx²/speed²
     const k = 0.5 * GRAVITY * rdx * rdx / (speed * speed);
-    const disc = rdx * rdx - 4 * k * (k - rdy);
+    const disc = rdx*rdx - 4*k*(k - rdy);
     if (disc < 0) continue;
-
-    const sqrtDisc = Math.sqrt(disc);
-    const u1 = (-rdx + sqrtDisc) / (2 * k);
-    const u2 = (-rdx - sqrtDisc) / (2 * k);
-    // Choose flatter (smaller |tan|) trajectory
+    const sq = Math.sqrt(disc);
+    const u1 = (-rdx + sq) / (2*k), u2 = (-rdx - sq) / (2*k);
     const u = Math.abs(u1) <= Math.abs(u2) ? u1 : u2;
-
-    // Convert tan(rad) back to game angle
-    // For rdx>0 (right target) rad must be in Q2 (PI/2..PI); for rdx<0 in Q1 (0..PI/2)
     const rad = rdx >= 0 ? Math.PI + Math.atan(u) : Math.atan(u);
     const angle = rad * 180 / Math.PI;
-
-    if (angle >= 5 && angle <= 175) {
-      solvedAngle = angle;
-      solvedPower = power;
-      break;
-    }
+    if (angle >= 5 && angle <= 175) { solvedAngle = angle; solvedPower = power; break; }
   }
 
-  if (solvedAngle === null) {
-    // Fallback if no analytic solution found
-    solvedAngle = rdx > 0 ? 135 : 45;
-    solvedPower = 60;
-  }
+  if (solvedAngle === null) { solvedAngle = rdx > 0 ? 135 : 45; solvedPower = 60; }
 
-  // Add imperfection noise so AI isn't a perfect shot
-  const angleNoise = (Math.random() - 0.5) * 22;
-  const powerNoise = Math.round((Math.random() - 0.5) * 12);
-  p.angle = Math.max(5, Math.min(175, Math.round(solvedAngle + angleNoise)));
-  p.power = Math.max(15, Math.min(100, solvedPower + powerNoise));
-
+  p.angle = Math.max(5, Math.min(175, Math.round(solvedAngle + (Math.random()-0.5)*22)));
+  p.power = Math.max(15, Math.min(100, solvedPower + Math.round((Math.random()-0.5)*12)));
   syncSliders();
   updateHUD();
-  setTimeout(fire, 700 + Math.random() * 500);
+  setTimeout(fire, 700 + Math.random()*500);
+}
+
+// AI spends cash greedily on preferred weapons
+function aiAutoBuy(p) {
+  const pref = [4, 3, 2, 6, 5]; // Nuke, Napalm, MIRV, Roller, Dirt Ball
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const wi of pref) {
+      if (p.cash >= WEAPONS[wi].cost && WEAPONS[wi].cost > 0) {
+        p.cash -= WEAPONS[wi].cost;
+        p.inventory[wi]++;
+        changed = true;
+        break;
+      }
+    }
+  }
 }
 
 // ─── Fire ─────────────────────────────────────────────────────────────────────
@@ -553,31 +565,25 @@ function fire() {
   const wep = WEAPONS[p.weapon];
   if (p.inventory[p.weapon] <= 0) { showMsg('OUT OF AMMO', 'Choose a different weapon!', false); return; }
   p.inventory[p.weapon]--;
-
   animating = true;
   document.getElementById('fire-btn').disabled = true;
 
-  const rad = (p.angle * Math.PI) / 180;
+  const rad = p.angle * Math.PI / 180;
   const speed = p.power * 4;
   const vx0 = Math.cos(Math.PI - rad) * speed;
   const vy0 = -Math.sin(rad) * speed;
-
-  const shots = [];
   const n = wep.projectiles;
   for (let i = 0; i < n; i++) {
-    const spreadAngle = n > 1 ? (i - (n-1)/2) * wep.spread : 0;
-    shots.push({
+    const sa = n > 1 ? (i - (n-1)/2) * wep.spread : 0;
+    projectiles.push({
       x: p.x, y: p.y - TANK_H,
-      vx: vx0 + Math.sin(spreadAngle) * speed,
+      vx: vx0 + Math.sin(sa)*speed,
       vy: vy0 + (n > 1 ? Math.random()*(-30) : 0),
-      weapon: wep,
-      ownerId: p.id,
+      weapon: wep, ownerId: p.id,
       color: wep.color, trailColor: wep.trail,
-      trail: [], life: 600,
-      roller: wep.roller || false,
+      trail: [], life: 600, roller: !!wep.roller,
     });
   }
-  projectiles.push(...shots);
 }
 
 // ─── Animation loop ───────────────────────────────────────────────────────────
@@ -589,52 +595,34 @@ function loop(ts) {
   for (let i = explosions.length-1; i >= 0; i--) {
     const ex = explosions[i];
     ex.life--;
-    ex.phase = 0.3 + (1 - ex.life / ex.maxLife) * 0.8;
+    ex.phase = 0.3 + (1 - ex.life/ex.maxLife) * 0.8;
     if (ex.life <= 0) explosions.splice(i, 1);
   }
 
   for (let i = projectiles.length-1; i >= 0; i--) {
     const proj = projectiles[i];
-    proj.trail.push({ x: proj.x, y: proj.y });
+    proj.trail.push({ x:proj.x, y:proj.y });
     if (proj.trail.length > 18) proj.trail.shift();
-
     proj.vx += wind * dt * 0.5;
     if (!proj.roller) proj.vy += GRAVITY * dt;
     proj.x += proj.vx * dt;
     proj.y += proj.vy * dt;
     proj.life--;
-
     const ty = getTerrainY(proj.x);
-
     if (proj.roller) {
       if (proj.y >= ty) {
-        proj.y = ty;
-        proj.vy = 0;
-        proj.vx *= 0.98;
-        if (Math.abs(proj.vx) < 5) {
-          explodeAt(proj.x, proj.y, proj.weapon, proj.ownerId);
-          projectiles.splice(i, 1);
-          continue;
-        }
+        proj.y = ty; proj.vy = 0; proj.vx *= 0.98;
+        if (Math.abs(proj.vx) < 5) { explodeAt(proj.x, proj.y, proj.weapon, proj.ownerId); projectiles.splice(i,1); continue; }
       }
     }
-
     if (proj.x < 0 || proj.x > W || proj.y > H || proj.life <= 0) {
-      if (proj.y > H * 0.05) {
-        explodeAt(proj.x, Math.min(proj.y, ty), proj.weapon, proj.ownerId);
-      }
-      projectiles.splice(i, 1);
-      continue;
+      if (proj.y > H*0.05) explodeAt(proj.x, Math.min(proj.y,ty), proj.weapon, proj.ownerId);
+      projectiles.splice(i, 1); continue;
     }
-
-    if (!proj.roller && proj.y >= ty) {
-      explodeAt(proj.x, ty, proj.weapon, proj.ownerId);
-      projectiles.splice(i, 1);
-      continue;
-    }
+    if (!proj.roller && proj.y >= ty) { explodeAt(proj.x, ty, proj.weapon, proj.ownerId); projectiles.splice(i,1); continue; }
   }
 
-  if (gameRunning || terrain.length > 0) render();
+  if (terrain.length > 0) render();
 
   if (projectiles.length === 0 && explosions.length === 0 && animating) {
     animating = false;
@@ -656,34 +644,122 @@ function nextTurn() {
   } while (!players[currentPlayer].alive);
 
   if (currentPlayer === 0) {
-    round++;
-    document.getElementById('round-val').textContent = round;
-    if (round > roundsTotal) { endGame(); return; }
-    wind = (Math.random() * 2 - 1) * 60;
+    wind = (Math.random()*2 - 1) * 60;
     updateWindHUD();
   }
   updateHUD();
   updateWeaponSelect();
-
   if (players[currentPlayer].isAI) {
     document.getElementById('fire-btn').disabled = true;
-    setTimeout(aiTakeTurn, 800 + Math.random() * 400);
+    setTimeout(aiTakeTurn, 800 + Math.random()*400);
   }
 }
 
 function checkWin() {
   const alive = players.filter(p => p.alive);
-  if (alive.length <= 1) endGame(alive[0]);
+  if (alive.length <= 1) endMatch(alive[0] || null);
 }
 
-function endGame(winner) {
+// ─── Match / Shop flow ────────────────────────────────────────────────────────
+function endMatch(winner) {
   gameRunning = false;
   if (winner) {
-    showMsg(`${winner.name} WINS!`, `Score: ${winner.score} | Cash: $${winner.cash}`, true);
-  } else {
-    const best = players.slice().sort((a,b) => b.score - a.score)[0];
-    showMsg(`${best.name} WINS!`, `Score: ${best.score} | Cash: $${best.cash}`, true);
+    winner.score += 500;  // match-win bonus
   }
+  if (matchNum >= matchesTotal) {
+    endGame();
+  } else {
+    showShop(winner);
+  }
+}
+
+function showShop(matchWinner) {
+  const winText = matchWinner
+    ? `${matchWinner.name} wins match ${matchNum}! (+500 pts)`
+    : `Match ${matchNum} — all eliminated!`;
+  document.getElementById('shop-title').textContent = `MATCH ${matchNum} COMPLETE`;
+  document.getElementById('shop-sub').textContent = winText;
+  document.getElementById('shop-next-lbl').textContent = matchNum + 1;
+
+  // AI players auto-buy immediately
+  players.filter(p => p.isAI).forEach(aiAutoBuy);
+
+  // Replenish free weapons for everyone now (they carry into next match)
+  players.forEach(p => { p.inventory[0] = 99; p.inventory[1] = 5; });
+
+  // Cash header row
+  const cashRow = document.getElementById('shop-cash-row');
+  cashRow.innerHTML = '';
+  players.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'shop-pcash';
+    div.style.color = p.color;
+    div.innerHTML = `${p.name}${p.isAI?' [AI]':''}<span class="pcash-val" id="pcash-${i}">$${p.cash}</span>`;
+    cashRow.appendChild(div);
+  });
+
+  // Weapons table (paid weapons only)
+  const tbl = document.getElementById('shop-tbl');
+  tbl.innerHTML = `<thead><tr>
+    <th class="wh">WEAPON</th><th>COST</th>
+    ${players.map((p,i)=>`<th style="color:${p.color}" id="shdr-${i}">${p.name.substring(0,7)}</th>`).join('')}
+  </tr></thead>`;
+  const tbody = document.createElement('tbody');
+  WEAPONS.forEach((w, wi) => {
+    if (w.cost === 0) return; // free weapons handled automatically
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="wname">${w.name}</td><td class="wcost">$${w.cost}</td>`;
+    players.forEach((p, pi) => {
+      const td = document.createElement('td');
+      const qty = document.createElement('span');
+      qty.id = `sq-${pi}-${wi}`;
+      qty.className = 'shop-qty';
+      qty.textContent = p.inventory[wi];
+      td.appendChild(qty);
+      if (!p.isAI) {
+        const btn = document.createElement('button');
+        btn.id = `sb-${pi}-${wi}`;
+        btn.className = 'shop-btn';
+        btn.textContent = 'BUY';
+        btn.disabled = p.cash < w.cost;
+        btn.onclick = () => shopBuy(pi, wi);
+        td.appendChild(btn);
+      }
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  tbl.appendChild(tbody);
+
+  document.getElementById('shop-screen').style.display = 'flex';
+}
+
+function shopBuy(pi, wi) {
+  const p = players[pi];
+  const cost = WEAPONS[wi].cost;
+  if (p.cash < cost) return;
+  p.cash -= cost;
+  p.inventory[wi]++;
+  document.getElementById(`sq-${pi}-${wi}`).textContent = p.inventory[wi];
+  document.getElementById(`pcash-${pi}`).textContent = '$' + p.cash;
+  // Refresh all buy buttons for this player
+  WEAPONS.forEach((w, i) => {
+    const btn = document.getElementById(`sb-${pi}-${i}`);
+    if (btn) btn.disabled = p.cash < w.cost;
+  });
+}
+
+function startNextMatch() {
+  document.getElementById('shop-screen').style.display = 'none';
+  matchNum++;
+  startMatch();
+}
+
+function endGame() {
+  gameRunning = false;
+  const best = players.slice().sort((a,b) => b.score - a.score)[0];
+  const scores = players.map(p => `${p.name}: ${p.score}`).join(' | ');
+  showMsg(`${best.name} WINS!`, scores, true);
 }
 
 function showMsg(title, body, newGame) {
@@ -691,29 +767,25 @@ function showMsg(title, body, newGame) {
   document.getElementById('msg-body').textContent = body;
   const btn = document.getElementById('msg-btn');
   btn.textContent = newGame ? 'NEW GAME' : 'OK';
-  btn.onclick = newGame ? showSetupScreen : () => {
-    document.getElementById('message').style.display = 'none';
-  };
+  btn.onclick = newGame ? showSetupScreen : () => { document.getElementById('message').style.display = 'none'; };
   document.getElementById('message').style.display = 'block';
 }
 
 // ─── HUD ──────────────────────────────────────────────────────────────────────
 function updateHUD() {
   const p = players[currentPlayer];
-  const aiSuffix = p.isAI ? ' [AI]' : '';
-  document.getElementById('turn-label').textContent = p.name.toUpperCase() + aiSuffix;
+  document.getElementById('turn-label').textContent = p.name.toUpperCase() + (p.isAI ? ' [AI]' : '');
   document.getElementById('turn-label').style.color = p.color;
   document.getElementById('hp-val').textContent = p.hp;
   document.getElementById('cash-val').textContent = p.cash;
-  document.getElementById('round-val').textContent = round;
+  document.getElementById('match-val').textContent = `${matchNum}/${matchesTotal}`;
   document.getElementById('angle-slider').value = p.angle;
   document.getElementById('angle-val').textContent = p.angle + '°';
   document.getElementById('power-slider').value = p.power;
   document.getElementById('power-val').textContent = p.power;
-
   const sc = players.map(pl => {
-    const short = pl.name.length > 8 ? pl.name.substring(0, 7) + '…' : pl.name;
-    return `<span style="color:${pl.color}">${short}:${pl.score}</span>`;
+    const s = pl.name.length > 8 ? pl.name.substring(0,7)+'…' : pl.name;
+    return `<span style="color:${pl.color}">${s}:${pl.score}</span>`;
   }).join(' ');
   document.getElementById('scores-hud').innerHTML = sc;
 }
@@ -753,18 +825,15 @@ document.getElementById('weapon-select').addEventListener('change', e => {
   if (!gameRunning || animating) return;
   players[currentPlayer].weapon = +e.target.value;
 });
-
 document.addEventListener('keydown', e => {
-  if (!gameRunning || animating) return;
-  if (players[currentPlayer].isAI) return; // block input during AI turn
+  if (!gameRunning || animating || players[currentPlayer].isAI) return;
   const p = players[currentPlayer];
-  if (e.key === 'ArrowLeft' || e.key === 'a') { p.angle = Math.max(0, p.angle - 2); syncSliders(); }
-  else if (e.key === 'ArrowRight' || e.key === 'd') { p.angle = Math.min(180, p.angle + 2); syncSliders(); }
-  else if (e.key === '[') { p.power = Math.max(5, p.power - 2); syncSliders(); }
-  else if (e.key === ']') { p.power = Math.min(100, p.power + 2); syncSliders(); }
-  else if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); fire(); }
+  if      (e.key==='ArrowLeft'||e.key==='a')  { p.angle = Math.max(0, p.angle-2); syncSliders(); }
+  else if (e.key==='ArrowRight'||e.key==='d') { p.angle = Math.min(180, p.angle+2); syncSliders(); }
+  else if (e.key==='[') { p.power = Math.max(5, p.power-2); syncSliders(); }
+  else if (e.key===']') { p.power = Math.min(100, p.power+2); syncSliders(); }
+  else if (e.key===' '||e.key==='Enter') { e.preventDefault(); fire(); }
 });
-
 function syncSliders() {
   const p = players[currentPlayer];
   document.getElementById('angle-slider').value = p.angle;
@@ -774,15 +843,20 @@ function syncSliders() {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
-function initGame() {
+function startMatch() {
   W = canvas.width  = canvas.parentElement.clientWidth;
   H = canvas.height = canvas.parentElement.clientHeight;
-  players = setupConfig.map((cfg, i) => makePlayer(i, cfg.name, cfg.isAI));
-  generateTerrain();   // fresh random terrain every match
+  // Revive all, reset HP; keep score, cash, and purchased inventory
+  players.forEach(p => {
+    p.hp = 100;
+    p.alive = true;
+    p.angle = p.id < 2 ? 45 : 135;
+    p.weapon = 0;
+  });
+  generateTerrain();
   placeTanks();
   currentPlayer = 0;
-  round = 1;
-  wind = (Math.random() * 2 - 1) * 40;
+  wind = (Math.random()*2 - 1) * 40;
   projectiles = [];
   explosions = [];
   animating = false;
@@ -791,12 +865,17 @@ function initGame() {
   updateWindHUD();
   updateWeaponSelect();
   document.getElementById('fire-btn').disabled = false;
-
-  // Kick off AI if first player is AI
   if (players[currentPlayer].isAI) {
     document.getElementById('fire-btn').disabled = true;
     setTimeout(aiTakeTurn, 1000);
   }
+}
+
+function initGame() {
+  matchNum = 1;
+  matchesTotal = setupConfig.matches;
+  players = setupConfig.players.map((cfg, i) => makePlayer(i, cfg.name, cfg.isAI));
+  startMatch();
 }
 
 window.addEventListener('resize', () => {
@@ -811,7 +890,6 @@ window.addEventListener('resize', () => {
 window.onload = () => {
   canvas = document.getElementById('canvas');
   ctx = canvas.getContext('2d');
-  // Size canvas so background terrain renders behind the setup screen
   W = canvas.width  = canvas.parentElement.clientWidth;
   H = canvas.height = canvas.parentElement.clientHeight;
   generateTerrain();
