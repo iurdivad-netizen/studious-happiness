@@ -454,17 +454,33 @@ function getTerrainY(x) {
 }
 
 function blastCrater(cx, cy, radius) {
-  for (let x = Math.max(0, cx - radius); x < Math.min(W, cx + radius); x++) {
-    const depth = Math.sqrt(Math.max(0, radius*radius - (x-cx)*(x-cx)));
-    terrain[x] = Math.min(H-2, Math.max(terrain[x], cy + depth));
+  const r2 = radius * radius;
+  for (let x = Math.max(0, Math.floor(cx - radius)); x <= Math.min(W - 1, Math.ceil(cx + radius)); x++) {
+    const dx = x - cx;
+    const dy2 = r2 - dx * dx;
+    if (dy2 < 0) continue;
+    const halfChord   = Math.sqrt(dy2);
+    const circleTop   = cy - halfChord;
+    const circleBot   = cy + halfChord;
+    // Only carve if the explosion circle reaches above (or into) the terrain surface
+    if (circleTop < terrain[x]) {
+      terrain[x] = Math.min(H - 2, Math.max(terrain[x], circleBot));
+    }
   }
   for (const p of players) { if (p.alive) p.y = getTerrainY(p.x); }
 }
 
 function dirtUp(cx, cy, radius) {
-  for (let x = Math.max(0, cx - radius); x < Math.min(W, cx + radius); x++) {
-    const depth = Math.sqrt(Math.max(0, radius*radius - (x-cx)*(x-cx))) * 0.6;
-    terrain[x] = Math.max(5, Math.min(terrain[x], cy - depth));
+  const r2 = radius * radius;
+  for (let x = Math.max(0, Math.floor(cx - radius)); x <= Math.min(W - 1, Math.ceil(cx + radius)); x++) {
+    const dx = x - cx;
+    const dy2 = r2 - dx * dx;
+    if (dy2 < 0) continue;
+    const circleTop = cy - Math.sqrt(dy2);
+    // Only pile dirt where the dome extends above the current surface
+    if (circleTop < terrain[x]) {
+      terrain[x] = Math.max(H * 0.05, circleTop);
+    }
   }
   for (const p of players) { if (p.alive) p.y = getTerrainY(p.x); }
 }
