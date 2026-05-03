@@ -138,7 +138,7 @@
     <p class="section-label">ARSENAL SHOP — BUY WEAPONS FOR NEXT MATCH</p>
     <div class="shop-cash-row" id="shop-cash-row"></div>
     <table class="shop-tbl" id="shop-tbl"></table>
-    <p class="shop-note">Free weapons (Baby Missile, Missile) are replenished for all players each match.</p>
+    <p class="shop-note">Baby Missiles are replenished each match. All other weapons must be purchased.</p>
     <button class="big-btn" id="shop-go-btn" onclick="startNextMatch()">START MATCH <span id="shop-next-lbl">2</span></button>
   </div>
 </div>
@@ -191,13 +191,13 @@ const FPS = 60;
 
 // ─── Weapons ──────────────────────────────────────────────────────────────────
 const WEAPONS = [
-  { name:'Baby Missile', cost:0,   radius:18, damage:25,  projectiles:1, spread:0,   color:'#ff0', trail:'#fa0' },
-  { name:'Missile',      cost:0,   radius:28, damage:40,  projectiles:1, spread:0,   color:'#f80', trail:'#f40' },
-  { name:'MIRV',         cost:150, radius:22, damage:30,  projectiles:5, spread:0.3, color:'#f0f', trail:'#a0a' },
-  { name:'Napalm',       cost:200, radius:45, damage:55,  projectiles:1, spread:0,   color:'#f40', trail:'#f80', napalm:true },
-  { name:'Nuke',         cost:500, radius:90, damage:100, projectiles:1, spread:0,   color:'#fff', trail:'#ff0' },
-  { name:'Dirt Ball',    cost:50,  radius:30, damage:0,   projectiles:1, spread:0,   color:'#840', trail:'#640', dirt:true },
-  { name:'Roller',       cost:100, radius:20, damage:35,  projectiles:1, spread:0,   color:'#0ff', trail:'#08f', roller:true },
+  { name:'Baby Missile', cost:0,   radius:14,  damage:25,  projectiles:1, spread:0,   color:'#ff0', trail:'#fa0' },
+  { name:'Missile',      cost:100, radius:38,  damage:40,  projectiles:1, spread:0,   color:'#f80', trail:'#f40' },
+  { name:'MIRV',         cost:150, radius:24,  damage:30,  projectiles:5, spread:0.3, color:'#f0f', trail:'#a0a' },
+  { name:'Napalm',       cost:200, radius:60,  damage:55,  projectiles:1, spread:0,   color:'#f40', trail:'#f80', napalm:true },
+  { name:'Nuke',         cost:500, radius:120, damage:100, projectiles:1, spread:0,   color:'#fff', trail:'#ff0' },
+  { name:'Dirt Ball',    cost:50,  radius:44,  damage:0,   projectiles:1, spread:0,   color:'#840', trail:'#640', dirt:true },
+  { name:'Roller',       cost:100, radius:26,  damage:35,  projectiles:1, spread:0,   color:'#0ff', trail:'#08f', roller:true },
 ];
 
 const PLAYER_COLORS = ['#0f0','#f00','#ff0','#f0f'];
@@ -242,7 +242,7 @@ function makePlayer(i, name, isAI) {
     weapon: 0,
     alive: true,
     score: 0,
-    inventory: [99, 5, 1, 1, 0, 1, 1], // paid weapons start low; free ones replenish each match
+    inventory: [99, 0, 0, 0, 0, 0, 0], // only baby missiles at start; buy others in shop
   };
 }
 
@@ -286,27 +286,37 @@ function beginGame() {
 // ─── Terrain generation ───────────────────────────────────────────────────────
 function generateTerrain() {
   terrain = new Array(W).fill(0);
-  const arr = new Float32Array(W);
-  // Randomise endpoints so the map never looks the same
-  arr[0]   = H * (0.3 + Math.random() * 0.4);
-  arr[W-1] = H * (0.3 + Math.random() * 0.4);
-  let step = W;
-  let scale = H * 0.55;   // higher than before → taller peaks/valleys
+
+  // Use power-of-two size >= W for clean midpoint displacement
+  let size = 1;
+  while (size < W) size <<= 1;
+  const arr = new Float32Array(size + 1);
+
+  // Endpoints biased toward mid-height so mountains have room to spike up
+  arr[0]    = H * (0.45 + Math.random() * 0.1);
+  arr[size] = H * (0.45 + Math.random() * 0.1);
+
+  let step = size;
+  let scale = H * 0.82;   // large initial amplitude → dramatic peaks
   while (step > 1) {
     const half = step >> 1;
-    for (let x = half; x < W; x += step) {
-      arr[x] = (arr[x - half] + arr[x + half < W ? x + half : W-1]) / 2
+    for (let x = half; x < size; x += step) {
+      arr[x] = (arr[x - half] + arr[x + half]) / 2
                + (Math.random() * 2 - 1) * scale;
     }
-    scale *= 0.68;         // decay slower → more high-frequency detail retained
+    scale *= 0.50;   // halve amplitude each octave → craggy large-scale shape
     step = half;
   }
+
+  // Sample the displacement array into terrain[], clamp to 5%-88%
+  const ratio = size / W;
   for (let x = 0; x < W; x++) {
-    terrain[x] = Math.max(H * 0.1, Math.min(H * 0.9, arr[x]));
+    terrain[x] = Math.max(H * 0.05, Math.min(H * 0.88, arr[Math.round(x * ratio)]));
   }
-  // Only 1 smoothing pass (was 4) so slopes stay sharp
-  for (let x = 1; x < W-1; x++) {
-    terrain[x] = (terrain[x-1] + terrain[x] + terrain[x+1]) / 3;
+
+  // One mild smoothing pass to remove single-pixel spikes without flattening peaks
+  for (let x = 1; x < W - 1; x++) {
+    terrain[x] = terrain[x - 1] * 0.2 + terrain[x] * 0.6 + terrain[x + 1] * 0.2;
   }
 }
 
@@ -484,12 +494,13 @@ function explodeAt(cx, cy, wep, ownerId) {
       if (dist < wep.radius * 1.2) {
         const dmg = Math.round(wep.damage * (1 - dist / (wep.radius * 1.5)));
         if (dmg > 0) {
-          p.hp = Math.max(0, p.hp - dmg);
+          // One-hit kill: any direct hit is lethal
+          p.hp = 0;
           if (p.id !== ownerId) {
-            players[ownerId].cash += dmg * 3;
-            players[ownerId].score += dmg;
+            players[ownerId].cash += wep.damage * 3;
+            players[ownerId].score += wep.damage;
           }
-          if (p.hp <= 0 && p.alive) {
+          if (p.alive) {
             p.alive = false;
             explosions.push({ x:p.x, y:p.y, radius:40, color:'#f00', life:80, maxLife:80, phase:0 });
             if (p.id !== ownerId) {
@@ -542,7 +553,7 @@ function aiTakeTurn() {
 
 // AI spends cash greedily on preferred weapons
 function aiAutoBuy(p) {
-  const pref = [4, 3, 2, 6, 5]; // Nuke, Napalm, MIRV, Roller, Dirt Ball
+  const pref = [4, 3, 2, 6, 1, 5]; // Nuke, Napalm, MIRV, Roller, Missile, Dirt Ball
   let changed = true;
   while (changed) {
     changed = false;
@@ -684,8 +695,8 @@ function showShop(matchWinner) {
   // AI players auto-buy immediately
   players.filter(p => p.isAI).forEach(aiAutoBuy);
 
-  // Replenish free weapons for everyone now (they carry into next match)
-  players.forEach(p => { p.inventory[0] = 99; p.inventory[1] = 5; });
+  // Replenish baby missiles for everyone; all other weapons must be bought
+  players.forEach(p => { p.inventory[0] = 99; });
 
   // Cash header row
   const cashRow = document.getElementById('shop-cash-row');
