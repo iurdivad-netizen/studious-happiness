@@ -188,6 +188,7 @@ const TANK_W = 16, TANK_H = 10;
 const BARREL_LEN = 12;
 const GRAVITY = 120;
 const FPS = 60;
+const FALL_DEATH_HEIGHT = 150; // px of free-fall before a tank is destroyed
 
 // ─── Weapons ──────────────────────────────────────────────────────────────────
 const WEAPONS = [
@@ -243,6 +244,8 @@ function makePlayer(i, name, isAI) {
     alive: true,
     score: 0,
     inventory: [99, 0, 0, 0, 0, 0, 0], // only baby missiles at start; buy others in shop
+    vy: 0,          // vertical falling velocity
+    fallStart: null, // y at which this fall began (null = on ground)
   };
 }
 
@@ -467,7 +470,6 @@ function blastCrater(cx, cy, radius) {
       terrain[x] = Math.min(H - 2, Math.max(terrain[x], circleBot));
     }
   }
-  for (const p of players) { if (p.alive) p.y = getTerrainY(p.x); }
 }
 
 function dirtUp(cx, cy, radius) {
@@ -482,7 +484,41 @@ function dirtUp(cx, cy, radius) {
       terrain[x] = Math.max(H * 0.05, circleTop);
     }
   }
-  for (const p of players) { if (p.alive) p.y = getTerrainY(p.x); }
+}
+
+// Returns true while any tank is still airborne (keeps animating flag alive).
+function updateTankPhysics(dt) {
+  let anyFalling = false;
+  for (const p of players) {
+    if (!p.alive) continue;
+    const ty = getTerrainY(p.x);
+    if (p.y < ty) {
+      // Tank is above terrain – apply gravity
+      if (p.fallStart === null) p.fallStart = p.y;
+      p.vy += GRAVITY * dt;
+      p.y  += p.vy * dt;
+      if (p.y >= ty) {
+        // Just landed
+        const fallDist = ty - p.fallStart;
+        p.y = ty;
+        p.vy = 0;
+        p.fallStart = null;
+        if (fallDist >= FALL_DEATH_HEIGHT) {
+          p.alive = false;
+          p.hp = 0;
+          explosions.push({ x:p.x, y:p.y, radius:40, color:'#f00', life:80, maxLife:80, phase:0 });
+        }
+      } else {
+        anyFalling = true;
+      }
+    } else {
+      // On or inside terrain (e.g. raised by dirt ball) – snap to surface
+      p.y = ty;
+      p.vy = 0;
+      p.fallStart = null;
+    }
+  }
+  return anyFalling;
 }
 
 function explodeAt(cx, cy, wep, ownerId) {
@@ -649,9 +685,11 @@ function loop(ts) {
     if (!proj.roller && proj.y >= ty) { explodeAt(proj.x, ty, proj.weapon, proj.ownerId); projectiles.splice(i,1); continue; }
   }
 
+  const anyFalling = updateTankPhysics(dt);
+
   if (terrain.length > 0) render();
 
-  if (projectiles.length === 0 && explosions.length === 0 && animating) {
+  if (projectiles.length === 0 && explosions.length === 0 && !anyFalling && animating) {
     animating = false;
     document.getElementById('fire-btn').disabled = false;
     checkWin();
@@ -879,6 +917,8 @@ function startMatch() {
     p.alive = true;
     p.angle = p.id < 2 ? 45 : 135;
     p.weapon = 0;
+    p.vy = 0;
+    p.fallStart = null;
   });
   generateTerrain();
   placeTanks();
