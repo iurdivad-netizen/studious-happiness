@@ -230,7 +230,9 @@ let gameRunning = false;
 let animating = false;
 let matchNum = 1;
 let matchesTotal = 5;
-let superFastMode = false;
+let speedLevel = 0; // 0 = normal, 1 = fast, 2 = fastest, 3 = ultra
+const SPEED_LABELS  = ['⚡ FAST', '⚡⚡ FASTEST', '⚡⚡⚡ ULTRA', '▷ NORMAL'];
+const SPEED_STEPS   = [20, 80, 400];
 
 // ─── Player factory ───────────────────────────────────────────────────────────
 function makePlayer(i, name, isAI) {
@@ -666,7 +668,7 @@ function physicsStep(dt) {
 
   for (let i = projectiles.length-1; i >= 0; i--) {
     const proj = projectiles[i];
-    if (!superFastMode) {
+    if (speedLevel === 0) {
       proj.trail.push({ x:proj.x, y:proj.y });
       if (proj.trail.length > 18) proj.trail.shift();
     }
@@ -705,8 +707,9 @@ function loop(ts) {
   const realDt = Math.min((ts - lastTime) / 1000, 0.05);
   lastTime = ts;
 
-  if (superFastMode && animating) {
-    for (let i = 0; i < 20; i++) {
+  if (speedLevel > 0 && animating) {
+    const steps = SPEED_STEPS[speedLevel - 1];
+    for (let i = 0; i < steps; i++) {
       if (physicsStep(1 / 60)) break;
     }
   } else {
@@ -733,7 +736,7 @@ function nextTurn() {
   updateWeaponSelect();
   if (players[currentPlayer].isAI) {
     document.getElementById('fire-btn').disabled = true;
-    setTimeout(aiTakeTurn, superFastMode ? 0 : 800 + Math.random()*400);
+    setTimeout(aiTakeTurn, speedLevel > 0 ? 0 : 800 + Math.random()*400);
   }
 }
 
@@ -855,19 +858,19 @@ function showMsg(title, body, newGame) {
 
 // ─── Fast mode ────────────────────────────────────────────────────────────────
 function toggleFastMode() {
-  superFastMode = !superFastMode;
+  speedLevel = (speedLevel + 1) % 4;
   const btn = document.getElementById('fast-btn');
-  btn.textContent = superFastMode ? '⚡ FAST ON' : '⚡ FAST';
-  btn.classList.toggle('fast-active', superFastMode);
+  btn.textContent = SPEED_LABELS[speedLevel];
+  btn.classList.toggle('fast-active', speedLevel > 0);
 }
 
 function updateFastBtn() {
   const allAI = players.length > 0 && players.every(p => p.isAI);
-  document.getElementById('fast-btn').style.display = allAI ? '' : 'none';
-  if (!allAI && superFastMode) {
-    superFastMode = false;
-    const btn = document.getElementById('fast-btn');
-    btn.textContent = '⚡ FAST';
+  const btn = document.getElementById('fast-btn');
+  btn.style.display = allAI ? '' : 'none';
+  if (!allAI && speedLevel > 0) {
+    speedLevel = 0;
+    btn.textContent = SPEED_LABELS[0];
     btn.classList.remove('fast-active');
   }
 }
@@ -971,16 +974,16 @@ function startMatch() {
   updateFastBtn();
   if (players[currentPlayer].isAI) {
     document.getElementById('fire-btn').disabled = true;
-    setTimeout(aiTakeTurn, superFastMode ? 0 : 1000);
+    setTimeout(aiTakeTurn, speedLevel > 0 ? 0 : 1000);
   }
 }
 
 function initGame() {
   matchNum = 1;
   matchesTotal = setupConfig.matches;
-  superFastMode = false;
+  speedLevel = 0;
   const btn = document.getElementById('fast-btn');
-  btn.textContent = '⚡ FAST';
+  btn.textContent = SPEED_LABELS[0];
   btn.classList.remove('fast-active');
   players = setupConfig.players.map((cfg, i) => makePlayer(i, cfg.name, cfg.isAI));
   startMatch();
