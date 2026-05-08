@@ -727,7 +727,6 @@ function nextTurn() {
   } while (!players[currentPlayer].alive);
 
   if (currentPlayer === 0) {
-    wind = (Math.random()*2 - 1) * 60;
     updateWindHUD();
   }
   updateHUD();
