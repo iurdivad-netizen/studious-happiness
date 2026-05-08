@@ -114,6 +114,7 @@
     font-size: 11px; text-align: center; line-height: 1.6;
   }
   .shop-pcash .pcash-val { display: block; color: #ff0; font-size: 14px; font-weight: bold; }
+  .shop-tbl-wrap { overflow-x: auto; }
   .shop-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
   .shop-tbl th { color: #666; font-size: 10px; letter-spacing: 1px; border-bottom: 1px solid #333; padding: 5px 5px; text-align: center; }
   .shop-tbl th.wh { text-align: left; }
@@ -140,6 +141,20 @@
     <h1 class="overlay-title">SCORCHED EARTH</h1>
     <p class="overlay-sub">TANK COMBAT</p>
     <p class="section-label">PLAYERS</p>
+    <div class="matches-row" style="margin-bottom:10px">
+      <label>NUMBER OF PLAYERS</label>
+      <select id="num-players-sel" onchange="onNumPlayersChange()">
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4" selected>4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+        <option value="9">9</option>
+        <option value="10">10</option>
+      </select>
+    </div>
     <div id="player-rows"></div>
     <div class="matches-row">
       <label>MATCHES PER GAME</label>
@@ -180,7 +195,7 @@
     <div id="shop-standings"></div>
     <p class="section-label">ARSENAL SHOP — BUY WEAPONS FOR NEXT MATCH</p>
     <div class="shop-cash-row" id="shop-cash-row"></div>
-    <table class="shop-tbl" id="shop-tbl"></table>
+    <div class="shop-tbl-wrap"><table class="shop-tbl" id="shop-tbl"></table></div>
     <p class="shop-note">Baby Missiles are replenished each match. All other weapons must be purchased.</p>
     <button class="big-btn" id="shop-go-btn" onclick="startNextMatch()">START MATCH <span id="shop-next-lbl">2</span></button>
   </div>
@@ -244,7 +259,6 @@
 
 <script>
 // ─── Constants ───────────────────────────────────────────────────────────────
-const NUM_PLAYERS = 4;
 const TANK_W = 16, TANK_H = 10;
 const BARREL_LEN = 12;
 const BASE_GRAVITY = 120;
@@ -263,8 +277,8 @@ const WEAPONS = [
   { name:'Roller',       cost:100, radius:26,  damage:35,  projectiles:1, spread:0,   color:'#0ff', trail:'#08f', roller:true },
 ];
 
-const PLAYER_COLORS = ['#0f0','#f00','#ff0','#f0f'];
-const PLAYER_NAMES  = ['Player 1','Player 2','Player 3','Player 4'];
+const PLAYER_COLORS = ['#0f0','#f00','#ff0','#f0f','#0ff','#f80','#08f','#f08','#8f0','#80f'];
+const PLAYER_NAMES  = ['Player 1','Player 2','Player 3','Player 4','Player 5','Player 6','Player 7','Player 8','Player 9','Player 10'];
 
 // ─── Planets ─────────────────────────────────────────────────────────────────
 const PLANETS = [
@@ -293,11 +307,18 @@ const AI_LEVELS = [
 
 // ─── Setup config ─────────────────────────────────────────────────────────────
 let setupConfig = {
+  numPlayers: 4,
   players: [
     { name:'Player 1', isAI:false, aiLevel:-1 },
     { name:'Player 2', isAI:false, aiLevel:-1 },
     { name:'Player 3', isAI:true,  aiLevel:-1 },
     { name:'Player 4', isAI:true,  aiLevel:-1 },
+    { name:'Player 5', isAI:true,  aiLevel:-1 },
+    { name:'Player 6', isAI:true,  aiLevel:-1 },
+    { name:'Player 7', isAI:true,  aiLevel:-1 },
+    { name:'Player 8', isAI:true,  aiLevel:-1 },
+    { name:'Player 9', isAI:true,  aiLevel:-1 },
+    { name:'Player 10',isAI:true,  aiLevel:-1 },
   ],
   matches: 5,
   planet: 2,        // default Earth
@@ -340,6 +361,7 @@ function makePlayer(i, name, isAI, aiLevel) {
     inventory: [99, 0, 0, 0, 0, 0, 0], // only baby missiles at start; buy others in shop
     vy: 0,          // vertical falling velocity
     fallStart: null, // y at which this fall began (null = on ground)
+    outOfAmmo: false,
   };
 }
 
@@ -347,6 +369,14 @@ function makePlayer(i, name, isAI, aiLevel) {
 function onGravityModeChange() {
   const mode = document.getElementById('gravity-mode-sel').value;
   document.getElementById('planet-row').style.display = mode === 'fixed' ? '' : 'none';
+}
+
+function onNumPlayersChange() {
+  const n = +document.getElementById('num-players-sel').value;
+  for (let i = 0; i < 10; i++) {
+    const row = document.getElementById(`player-row-${i}`);
+    if (row) row.style.display = i < n ? '' : 'none';
+  }
 }
 
 function showSetupScreen() {
@@ -358,6 +388,7 @@ function showSetupScreen() {
   container.innerHTML = '';
   setupConfig.players.forEach((cfg, i) => {
     const row = document.createElement('div');
+    row.id = `player-row-${i}`;
     row.className = 'player-row';
     const lvlOpts = [['? RANDOM',-1],['RECRUIT',0],['SOLDIER',1],['VETERAN',2],['GENERAL',3]]
       .map(([n,v]) => `<option value="${v}"${cfg.aiLevel===v?' selected':''}>${n}</option>`).join('');
@@ -381,6 +412,8 @@ function showSetupScreen() {
     });
   });
 
+  document.getElementById('num-players-sel').value = setupConfig.numPlayers;
+  onNumPlayersChange();
   document.getElementById('matches-sel').value = setupConfig.matches;
   document.getElementById('gravity-mode-sel').value = setupConfig.gravityMode;
   document.getElementById('planet-sel').value = setupConfig.planet;
@@ -389,6 +422,7 @@ function showSetupScreen() {
 }
 
 function beginGame() {
+  setupConfig.numPlayers = +document.getElementById('num-players-sel').value;
   setupConfig.players = setupConfig.players.map((_, i) => ({
     name: document.getElementById(`pname-${i}`).value.trim() || `Player ${i+1}`,
     isAI: document.getElementById(`pai-${i}`).checked,
@@ -439,8 +473,8 @@ function generateTerrain() {
 }
 
 function placeTanks() {
-  const spacing = W / (NUM_PLAYERS + 1);
-  for (let i = 0; i < NUM_PLAYERS; i++) {
+  const spacing = W / (players.length + 1);
+  for (let i = 0; i < players.length; i++) {
     const bx = Math.round(spacing * (i + 1));
     const cx = Math.max(20, Math.min(W-20, bx + Math.round((Math.random()-0.5)*spacing*0.4)));
     const ty = terrain[cx];
@@ -886,6 +920,7 @@ function fire() {
   const wep = WEAPONS[p.weapon];
   if (p.inventory[p.weapon] <= 0) { showMsg('OUT OF AMMO', 'Choose a different weapon!', false); return; }
   p.inventory[p.weapon]--;
+  if (p.inventory.every(n => n === 0)) p.outOfAmmo = true;
   animating = true;
   document.getElementById('fire-btn').disabled = true;
 
@@ -948,8 +983,15 @@ function physicsStep(dt) {
   if (projectiles.length === 0 && explosions.length === 0 && !anyFalling && animating) {
     animating = false;
     document.getElementById('fire-btn').disabled = false;
+    for (const p of players) {
+      if (p.outOfAmmo && p.alive) {
+        p.alive = false;
+        p.hp = 0;
+        p.outOfAmmo = false;
+        explosions.push({ x:p.x, y:p.y, radius:25, color:'#666', life:60, maxLife:60, phase:0 });
+      }
+    }
     checkWin();
-    if (gameRunning) checkAmmoStalemate();
     if (gameRunning) nextTurn();
     return true;
   }
@@ -977,9 +1019,9 @@ function loop(ts) {
 function nextTurn() {
   let tries = 0;
   do {
-    currentPlayer = (currentPlayer + 1) % NUM_PLAYERS;
+    currentPlayer = (currentPlayer + 1) % players.length;
     tries++;
-    if (tries > NUM_PLAYERS) break;
+    if (tries > players.length) break;
   } while (!players[currentPlayer].alive);
 
   if (currentPlayer === 0) {
@@ -996,13 +1038,6 @@ function nextTurn() {
 function checkWin() {
   const alive = players.filter(p => p.alive);
   if (alive.length <= 1) endMatch(alive[0] || null);
-}
-
-function checkAmmoStalemate() {
-  const alive = players.filter(p => p.alive);
-  if (alive.length > 1 && alive.every(p => !p.inventory.some(n => n > 0))) {
-    endMatch(null, true);
-  }
 }
 
 // ─── Standings ────────────────────────────────────────────────────────────────
@@ -1246,13 +1281,14 @@ function startMatch() {
   W = canvas.width  = canvas.parentElement.clientWidth;
   H = canvas.height = canvas.parentElement.clientHeight;
   // Revive all, reset HP; keep score, cash, and purchased inventory
-  players.forEach(p => {
+  players.forEach((p, i) => {
     p.hp = 100;
     p.alive = true;
-    p.angle = p.id < 2 ? 45 : 135;
+    p.angle = i < Math.ceil(players.length / 2) ? 45 : 135;
     p.weapon = 0;
     p.vy = 0;
     p.fallStart = null;
+    p.outOfAmmo = false;
   });
   activePlanetIdx = setupConfig.gravityMode === 'random'
     ? Math.floor(Math.random() * PLANETS.length)
@@ -1287,7 +1323,7 @@ function initGame() {
   const btn = document.getElementById('fast-btn');
   btn.textContent = SPEED_LABELS[0];
   btn.classList.remove('fast-active');
-  players = setupConfig.players.map((cfg, i) => {
+  players = setupConfig.players.slice(0, setupConfig.numPlayers).map((cfg, i) => {
     const lvl = cfg.isAI
       ? (cfg.aiLevel < 0 ? Math.floor(Math.random() * AI_LEVELS.length) : cfg.aiLevel)
       : 0;
