@@ -991,6 +991,7 @@ function physicsStep(dt) {
         explosions.push({ x:p.x, y:p.y, radius:25, color:'#666', life:60, maxLife:60, phase:0 });
       }
     }
+    updateFastBtn();
     checkWin();
     if (gameRunning) nextTurn();
     return true;
@@ -1195,9 +1196,11 @@ function toggleFastMode() {
 
 function updateFastBtn() {
   const allAI = players.length > 0 && players.every(p => p.isAI);
+  const noAliveHumans = gameRunning && players.some(p => p.alive) && players.filter(p => p.alive).every(p => p.isAI);
+  const showFast = allAI || noAliveHumans;
   const btn = document.getElementById('fast-btn');
-  btn.style.display = allAI ? '' : 'none';
-  if (!allAI && speedLevel > 0) {
+  btn.style.display = showFast ? '' : 'none';
+  if (!showFast && speedLevel > 0) {
     speedLevel = 0;
     btn.textContent = SPEED_LABELS[0];
     btn.classList.remove('fast-active');
