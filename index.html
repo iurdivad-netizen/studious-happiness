@@ -84,6 +84,10 @@
   }
   .matches-row label { color: #888; font-size: 12px; letter-spacing: 1px; }
   .matches-row select { background: #111; color: #ff0; border: 1px solid #444; padding: 4px 10px; font-weight: bold; }
+  .ai-level-sel {
+    background: #111; color: #ff0; border: 1px solid #444;
+    padding: 3px 6px; font-family: inherit; font-size: 11px; margin-left: 6px;
+  }
 
   /* ── Shop screen ────────────────────────────────────────────── */
   .shop-cash-row { display: flex; gap: 6px; margin-bottom: 14px; }
@@ -207,13 +211,24 @@ const WEAPONS = [
 const PLAYER_COLORS = ['#0f0','#f00','#ff0','#f0f'];
 const PLAYER_NAMES  = ['Player 1','Player 2','Player 3','Player 4'];
 
+// ─── AI intelligence levels ───────────────────────────────────────────────────
+// angleVar / powerVar = max ± deviation from perfect aim
+// weaponPref = weapon indices tried in order (first with ammo wins)
+// buyPref    = weapon indices bought greedily in shop (highest priority first)
+const AI_LEVELS = [
+  { name:'Recruit', angleVar:25, powerVar:20, weaponPref:[0],             buyPref:[]          },
+  { name:'Soldier', angleVar:15, powerVar:10, weaponPref:[6,1,0],         buyPref:[1,6,5]     },
+  { name:'Veteran', angleVar: 6, powerVar: 4, weaponPref:[3,2,6,1,0],     buyPref:[3,2,1,6,5] },
+  { name:'General', angleVar: 2, powerVar: 1, weaponPref:[4,3,2,6,1,5,0], buyPref:[4,3,2,1,6] },
+];
+
 // ─── Setup config ─────────────────────────────────────────────────────────────
 let setupConfig = {
   players: [
-    { name:'Player 1', isAI:false },
-    { name:'Player 2', isAI:false },
-    { name:'Player 3', isAI:true  },
-    { name:'Player 4', isAI:true  },
+    { name:'Player 1', isAI:false, aiLevel:-1 },
+    { name:'Player 2', isAI:false, aiLevel:-1 },
+    { name:'Player 3', isAI:true,  aiLevel:-1 },
+    { name:'Player 4', isAI:true,  aiLevel:-1 },
   ],
   matches: 5,
 };
@@ -235,12 +250,13 @@ const SPEED_LABELS  = ['⚡ FAST', '⚡⚡ FASTEST', '⚡⚡⚡ ULTRA', '▷ NOR
 const SPEED_STEPS   = [20, 80, 400];
 
 // ─── Player factory ───────────────────────────────────────────────────────────
-function makePlayer(i, name, isAI) {
+function makePlayer(i, name, isAI, aiLevel) {
   return {
     id: i,
     name: name || PLAYER_NAMES[i],
     color: PLAYER_COLORS[i],
     isAI: !!isAI,
+    aiLevel: aiLevel ?? 0,
     x: 0, y: 0,
     hp: 100,
     cash: 0,          // start every game with no money
@@ -265,6 +281,8 @@ function showSetupScreen() {
   setupConfig.players.forEach((cfg, i) => {
     const row = document.createElement('div');
     row.className = 'player-row';
+    const lvlOpts = [['? RANDOM',-1],['RECRUIT',0],['SOLDIER',1],['VETERAN',2],['GENERAL',3]]
+      .map(([n,v]) => `<option value="${v}"${cfg.aiLevel===v?' selected':''}>${n}</option>`).join('');
     row.innerHTML = `
       <div class="p-swatch" style="background:${PLAYER_COLORS[i]}"></div>
       <input class="p-name-input" type="text" id="pname-${i}"
@@ -274,8 +292,15 @@ function showSetupScreen() {
         <label for="phuman-${i}">HUMAN</label>
         <input type="radio" name="ptype-${i}" id="pai-${i}" value="ai" ${cfg.isAI?'checked':''}>
         <label for="pai-${i}">AI</label>
-      </div>`;
+      </div>
+      <select class="ai-level-sel" id="ailevel-${i}" style="display:${cfg.isAI?'inline-block':'none'}">${lvlOpts}</select>`;
     container.appendChild(row);
+    document.getElementById(`phuman-${i}`).addEventListener('change', () => {
+      document.getElementById(`ailevel-${i}`).style.display = 'none';
+    });
+    document.getElementById(`pai-${i}`).addEventListener('change', () => {
+      document.getElementById(`ailevel-${i}`).style.display = 'inline-block';
+    });
   });
 
   document.getElementById('matches-sel').value = setupConfig.matches;
@@ -286,6 +311,7 @@ function beginGame() {
   setupConfig.players = setupConfig.players.map((_, i) => ({
     name: document.getElementById(`pname-${i}`).value.trim() || `Player ${i+1}`,
     isAI: document.getElementById(`pai-${i}`).checked,
+    aiLevel: +document.getElementById(`ailevel-${i}`).value,
   }));
   setupConfig.matches = +document.getElementById('matches-sel').value;
   document.getElementById('setup-screen').style.display = 'none';
@@ -577,6 +603,11 @@ function aiTakeTurn() {
   if (!gameRunning || animating) return;
   const p = players[currentPlayer];
   if (!p.alive || !p.isAI) return;
+  const lvl = AI_LEVELS[p.aiLevel] || AI_LEVELS[0];
+
+  // Pick the best weapon this level prefers that has ammo
+  p.weapon = lvl.weaponPref.find(wi => p.inventory[wi] > 0) ?? 0;
+  updateWeaponSelect();
 
   const enemies = players.filter(e => e.alive && e.id !== p.id);
   if (!enemies.length) return;
@@ -602,20 +633,20 @@ function aiTakeTurn() {
 
   if (solvedAngle === null) { solvedAngle = rdx > 0 ? 135 : 45; solvedPower = 60; }
 
-  p.angle = Math.max(5, Math.min(175, Math.round(solvedAngle + (Math.random()-0.5)*22)));
-  p.power = Math.max(15, Math.min(100, solvedPower + Math.round((Math.random()-0.5)*12)));
+  p.angle = Math.max(5, Math.min(175, Math.round(solvedAngle + (Math.random()-0.5)*2*lvl.angleVar)));
+  p.power = Math.max(15, Math.min(100, solvedPower + Math.round((Math.random()-0.5)*2*lvl.powerVar)));
   syncSliders();
   updateHUD();
   setTimeout(fire, 700 + Math.random()*500);
 }
 
-// AI spends cash greedily on preferred weapons
+// AI spends cash greedily on preferred weapons for its intelligence level
 function aiAutoBuy(p) {
-  const pref = [4, 3, 2, 6, 1, 5]; // Nuke, Napalm, MIRV, Roller, Missile, Dirt Ball
+  const buyPref = (AI_LEVELS[p.aiLevel] || AI_LEVELS[0]).buyPref;
   let changed = true;
   while (changed) {
     changed = false;
-    for (const wi of pref) {
+    for (const wi of buyPref) {
       if (p.cash >= WEAPONS[wi].cost && WEAPONS[wi].cost > 0) {
         p.cash -= WEAPONS[wi].cost;
         p.inventory[wi]++;
@@ -779,7 +810,8 @@ function showShop(matchWinner) {
     const div = document.createElement('div');
     div.className = 'shop-pcash';
     div.style.color = p.color;
-    div.innerHTML = `${p.name}${p.isAI?' [AI]':''}<span class="pcash-val" id="pcash-${i}">$${p.cash}</span>`;
+    const shopTag = p.isAI ? ` [${(AI_LEVELS[p.aiLevel] || AI_LEVELS[0]).name}]` : '';
+    div.innerHTML = `${p.name}${shopTag}<span class="pcash-val" id="pcash-${i}">$${p.cash}</span>`;
     cashRow.appendChild(div);
   });
 
@@ -878,7 +910,8 @@ function updateFastBtn() {
 // ─── HUD ──────────────────────────────────────────────────────────────────────
 function updateHUD() {
   const p = players[currentPlayer];
-  document.getElementById('turn-label').textContent = p.name.toUpperCase() + (p.isAI ? ' [AI]' : '');
+  const aiTag = p.isAI ? ` [${(AI_LEVELS[p.aiLevel] || AI_LEVELS[0]).name.toUpperCase()}]` : '';
+  document.getElementById('turn-label').textContent = p.name.toUpperCase() + aiTag;
   document.getElementById('turn-label').style.color = p.color;
   document.getElementById('hp-val').textContent = p.hp;
   document.getElementById('cash-val').textContent = p.cash;
@@ -985,7 +1018,12 @@ function initGame() {
   const btn = document.getElementById('fast-btn');
   btn.textContent = SPEED_LABELS[0];
   btn.classList.remove('fast-active');
-  players = setupConfig.players.map((cfg, i) => makePlayer(i, cfg.name, cfg.isAI));
+  players = setupConfig.players.map((cfg, i) => {
+    const lvl = cfg.isAI
+      ? (cfg.aiLevel < 0 ? Math.floor(Math.random() * AI_LEVELS.length) : cfg.aiLevel)
+      : 0;
+    return makePlayer(i, cfg.name, cfg.isAI, lvl);
+  });
   startMatch();
 }
 
