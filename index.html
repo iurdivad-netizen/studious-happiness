@@ -971,8 +971,9 @@ function physicsStep(dt) {
         if (Math.abs(proj.vx) < 5) { explodeAt(proj.x, proj.y, proj.weapon, proj.ownerId); projectiles.splice(i,1); continue; }
       }
     }
-    if (proj.x < 0 || proj.x > W || proj.y > H || proj.life <= 0) {
-      if (proj.y > H*0.05) explodeAt(proj.x, Math.min(proj.y,ty), proj.weapon, proj.ownerId);
+    if (proj.life <= 0) { projectiles.splice(i, 1); continue; }
+    if (proj.x < 0 || proj.x > W || proj.y > H) {
+      explodeAt(proj.x, Math.min(proj.y, ty), proj.weapon, proj.ownerId);
       projectiles.splice(i, 1); continue;
     }
     if (!proj.roller && proj.y >= ty) { explodeAt(proj.x, ty, proj.weapon, proj.ownerId); projectiles.splice(i,1); continue; }
