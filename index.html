@@ -106,6 +106,8 @@
   .shop-btn:hover:not(:disabled) { background: #060; }
   .shop-btn:disabled { border-color: #222; color: #333; cursor: default; background: #000; }
   .shop-note { color: #444; font-size: 11px; text-align: center; margin-top: 10px; }
+  #fast-btn.fast-active { background: #ff0; color: #000; }
+  #fast-btn.fast-active:hover { background: #cc0; }
 </style>
 </head>
 <body>
@@ -177,6 +179,7 @@
       <select id="weapon-select"></select>
     </div>
     <button id="fire-btn" onclick="fire()">FIRE!</button>
+    <button id="fast-btn" onclick="toggleFastMode()" style="display:none" title="Speed up AI-only matches">⚡ FAST</button>
     <span style="font-size:11px;color:#555">← → angle &nbsp;|&nbsp; [ ] power &nbsp;|&nbsp; SPACE fire</span>
   </div>
 </div>
@@ -227,6 +230,7 @@ let gameRunning = false;
 let animating = false;
 let matchNum = 1;
 let matchesTotal = 5;
+let superFastMode = false;
 
 // ─── Player factory ───────────────────────────────────────────────────────────
 function makePlayer(i, name, isAI) {
@@ -651,10 +655,8 @@ function fire() {
 
 // ─── Animation loop ───────────────────────────────────────────────────────────
 let lastTime = 0;
-function loop(ts) {
-  const dt = Math.min((ts - lastTime) / 1000, 0.05);
-  lastTime = ts;
 
+function physicsStep(dt) {
   for (let i = explosions.length-1; i >= 0; i--) {
     const ex = explosions[i];
     ex.life--;
@@ -664,8 +666,10 @@ function loop(ts) {
 
   for (let i = projectiles.length-1; i >= 0; i--) {
     const proj = projectiles[i];
-    proj.trail.push({ x:proj.x, y:proj.y });
-    if (proj.trail.length > 18) proj.trail.shift();
+    if (!superFastMode) {
+      proj.trail.push({ x:proj.x, y:proj.y });
+      if (proj.trail.length > 18) proj.trail.shift();
+    }
     proj.vx += wind * dt * 0.5;
     if (!proj.roller) proj.vy += GRAVITY * dt;
     proj.x += proj.vx * dt;
@@ -687,15 +691,29 @@ function loop(ts) {
 
   const anyFalling = updateTankPhysics(dt);
 
-  if (terrain.length > 0) render();
-
   if (projectiles.length === 0 && explosions.length === 0 && !anyFalling && animating) {
     animating = false;
     document.getElementById('fire-btn').disabled = false;
     checkWin();
     if (gameRunning) nextTurn();
+    return true;
+  }
+  return false;
+}
+
+function loop(ts) {
+  const realDt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
+
+  if (superFastMode && animating) {
+    for (let i = 0; i < 20; i++) {
+      if (physicsStep(1 / 60)) break;
+    }
+  } else {
+    physicsStep(realDt);
   }
 
+  if (terrain.length > 0) render();
   requestAnimationFrame(loop);
 }
 
@@ -716,7 +734,7 @@ function nextTurn() {
   updateWeaponSelect();
   if (players[currentPlayer].isAI) {
     document.getElementById('fire-btn').disabled = true;
-    setTimeout(aiTakeTurn, 800 + Math.random()*400);
+    setTimeout(aiTakeTurn, superFastMode ? 0 : 800 + Math.random()*400);
   }
 }
 
@@ -836,6 +854,25 @@ function showMsg(title, body, newGame) {
   document.getElementById('message').style.display = 'block';
 }
 
+// ─── Fast mode ────────────────────────────────────────────────────────────────
+function toggleFastMode() {
+  superFastMode = !superFastMode;
+  const btn = document.getElementById('fast-btn');
+  btn.textContent = superFastMode ? '⚡ FAST ON' : '⚡ FAST';
+  btn.classList.toggle('fast-active', superFastMode);
+}
+
+function updateFastBtn() {
+  const allAI = players.length > 0 && players.every(p => p.isAI);
+  document.getElementById('fast-btn').style.display = allAI ? '' : 'none';
+  if (!allAI && superFastMode) {
+    superFastMode = false;
+    const btn = document.getElementById('fast-btn');
+    btn.textContent = '⚡ FAST';
+    btn.classList.remove('fast-active');
+  }
+}
+
 // ─── HUD ──────────────────────────────────────────────────────────────────────
 function updateHUD() {
   const p = players[currentPlayer];
@@ -932,15 +969,20 @@ function startMatch() {
   updateWindHUD();
   updateWeaponSelect();
   document.getElementById('fire-btn').disabled = false;
+  updateFastBtn();
   if (players[currentPlayer].isAI) {
     document.getElementById('fire-btn').disabled = true;
-    setTimeout(aiTakeTurn, 1000);
+    setTimeout(aiTakeTurn, superFastMode ? 0 : 1000);
   }
 }
 
 function initGame() {
   matchNum = 1;
   matchesTotal = setupConfig.matches;
+  superFastMode = false;
+  const btn = document.getElementById('fast-btn');
+  btn.textContent = '⚡ FAST';
+  btn.classList.remove('fast-active');
   players = setupConfig.players.map((cfg, i) => makePlayer(i, cfg.name, cfg.isAI));
   startMatch();
 }
