@@ -151,6 +151,13 @@
       </select>
     </div>
     <div class="matches-row">
+      <label>GRAVITY MODE</label>
+      <select id="gravity-mode-sel" onchange="onGravityModeChange()">
+        <option value="fixed">Fixed — same planet every match</option>
+        <option value="random">Random — new planet each match</option>
+      </select>
+    </div>
+    <div class="matches-row" id="planet-row">
       <label>BATTLE ARENA</label>
       <select id="planet-sel">
         <option value="0">🌙 Moon    — 0.17g | no wind</option>
@@ -293,12 +300,14 @@ let setupConfig = {
     { name:'Player 4', isAI:true,  aiLevel:-1 },
   ],
   matches: 5,
-  planet: 2,  // default Earth
+  planet: 2,        // default Earth
+  gravityMode: 'fixed', // 'fixed' | 'random'
 };
 
 // ─── Game state ───────────────────────────────────────────────────────────────
 let canvas, ctx, W, H;
 let terrain = [];
+let activePlanetIdx = 2; // resolved planet for the current match
 let players = [];
 let currentPlayer = 0;
 let wind = 0;
@@ -335,6 +344,11 @@ function makePlayer(i, name, isAI, aiLevel) {
 }
 
 // ─── Setup screen ─────────────────────────────────────────────────────────────
+function onGravityModeChange() {
+  const mode = document.getElementById('gravity-mode-sel').value;
+  document.getElementById('planet-row').style.display = mode === 'fixed' ? '' : 'none';
+}
+
 function showSetupScreen() {
   document.getElementById('message').style.display = 'none';
   document.getElementById('winner-screen').style.display = 'none';
@@ -368,7 +382,9 @@ function showSetupScreen() {
   });
 
   document.getElementById('matches-sel').value = setupConfig.matches;
+  document.getElementById('gravity-mode-sel').value = setupConfig.gravityMode;
   document.getElementById('planet-sel').value = setupConfig.planet;
+  document.getElementById('planet-row').style.display = setupConfig.gravityMode === 'fixed' ? '' : 'none';
   document.getElementById('setup-screen').style.display = 'flex';
 }
 
@@ -379,6 +395,7 @@ function beginGame() {
     aiLevel: +document.getElementById(`ailevel-${i}`).value,
   }));
   setupConfig.matches = +document.getElementById('matches-sel').value;
+  setupConfig.gravityMode = document.getElementById('gravity-mode-sel').value;
   setupConfig.planet = +document.getElementById('planet-sel').value;
   document.getElementById('setup-screen').style.display = 'none';
   initGame();
@@ -437,7 +454,7 @@ function placeTanks() {
 
 // ─── Drawing ──────────────────────────────────────────────────────────────────
 function drawSky() {
-  const pname = PLANETS[setupConfig.planet ?? 2].name;
+  const pname = PLANETS[activePlanetIdx].name;
 
   if (pname === 'Moon') {
     // Deep space — no atmosphere
@@ -586,7 +603,7 @@ function drawSky() {
 }
 
 function drawTerrain() {
-  const planet = PLANETS[setupConfig.planet ?? 2];
+  const planet = PLANETS[activePlanetIdx];
   ctx.beginPath();
   ctx.moveTo(0, H);
   for (let x = 0; x < W; x++) ctx.lineTo(x, terrain[x]);
@@ -1237,13 +1254,17 @@ function startMatch() {
     p.vy = 0;
     p.fallStart = null;
   });
-  const planet = PLANETS[setupConfig.planet ?? 2];
+  activePlanetIdx = setupConfig.gravityMode === 'random'
+    ? Math.floor(Math.random() * PLANETS.length)
+    : (setupConfig.planet ?? 2);
+  const planet = PLANETS[activePlanetIdx];
   gravity = BASE_GRAVITY * planet.gravityMult;
   generateTerrain();
   placeTanks();
   currentPlayer = 0;
   wind = (Math.random()*2 - 1) * 40 * planet.windMult;
-  document.getElementById('planet-val').textContent = planet.name.toUpperCase();
+  document.getElementById('planet-val').textContent =
+    (setupConfig.gravityMode === 'random' ? '? ' : '') + planet.name.toUpperCase();
   projectiles = [];
   explosions = [];
   animating = false;
