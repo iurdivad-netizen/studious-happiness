@@ -728,6 +728,7 @@ function physicsStep(dt) {
     animating = false;
     document.getElementById('fire-btn').disabled = false;
     checkWin();
+    if (gameRunning) checkAmmoStalemate();
     if (gameRunning) nextTurn();
     return true;
   }
@@ -776,8 +777,15 @@ function checkWin() {
   if (alive.length <= 1) endMatch(alive[0] || null);
 }
 
+function checkAmmoStalemate() {
+  const alive = players.filter(p => p.alive);
+  if (alive.length > 1 && alive.every(p => !p.inventory.some(n => n > 0))) {
+    endMatch(null, true);
+  }
+}
+
 // ─── Match / Shop flow ────────────────────────────────────────────────────────
-function endMatch(winner) {
+function endMatch(winner, stalemate) {
   gameRunning = false;
   if (winner) {
     winner.score += 500;  // match-win bonus
@@ -785,14 +793,16 @@ function endMatch(winner) {
   if (matchNum >= matchesTotal) {
     endGame();
   } else {
-    showShop(winner);
+    showShop(winner, stalemate);
   }
 }
 
-function showShop(matchWinner) {
+function showShop(matchWinner, stalemate) {
   const winText = matchWinner
     ? `${matchWinner.name} wins match ${matchNum}! (+500 pts)`
-    : `Match ${matchNum} — all eliminated!`;
+    : stalemate
+      ? `Match ${matchNum} — no ammo left! Draw!`
+      : `Match ${matchNum} — all eliminated!`;
   document.getElementById('shop-title').textContent = `MATCH ${matchNum} COMPLETE`;
   document.getElementById('shop-sub').textContent = winText;
   document.getElementById('shop-next-lbl').textContent = matchNum + 1;
