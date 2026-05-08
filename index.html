@@ -89,6 +89,24 @@
     padding: 3px 6px; font-family: inherit; font-size: 11px; margin-left: 6px;
   }
 
+  /* ── Standings table ────────────────────────────────────────── */
+  .standings-tbl { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px; }
+  .standings-tbl th { color: #555; font-size: 10px; letter-spacing: 2px;
+    border-bottom: 1px solid #333; padding: 5px 8px; }
+  .standings-tbl th.sh-name { text-align: left; }
+  .standings-tbl td { padding: 7px 8px; border-bottom: 1px solid #111; }
+  .standings-tbl .s-rank { color: #555; text-align: center; width: 28px; }
+  .standings-tbl .s-name { text-align: left; }
+  .standings-tbl .s-score { color: #ff0; text-align: right; font-weight: bold; min-width: 52px; }
+  .standings-tbl tr.s-top td { background: #0d1f0d; }
+  .standings-tbl tr.s-match-winner td { background: #111a11; }
+
+  /* ── Winner screen ──────────────────────────────────────────── */
+  .winner-banner { text-align: center; padding: 14px 0 10px; border: 1px solid #333; margin-bottom: 20px; }
+  .winner-crown { color: #555; font-size: 11px; letter-spacing: 3px; margin-bottom: 6px; }
+  .winner-big-name { font-size: 26px; font-weight: bold; letter-spacing: 4px; margin-bottom: 4px; }
+  .winner-tag { font-size: 11px; color: #555; letter-spacing: 3px; }
+
   /* ── Shop screen ────────────────────────────────────────────── */
   .shop-cash-row { display: flex; gap: 6px; margin-bottom: 14px; }
   .shop-pcash {
@@ -141,11 +159,29 @@
   <div class="overlay-inner">
     <h2 class="overlay-title" id="shop-title">MATCH 1 COMPLETE</h2>
     <p class="overlay-sub" id="shop-sub"></p>
+    <p class="section-label">STANDINGS</p>
+    <div id="shop-standings"></div>
     <p class="section-label">ARSENAL SHOP — BUY WEAPONS FOR NEXT MATCH</p>
     <div class="shop-cash-row" id="shop-cash-row"></div>
     <table class="shop-tbl" id="shop-tbl"></table>
     <p class="shop-note">Baby Missiles are replenished each match. All other weapons must be purchased.</p>
     <button class="big-btn" id="shop-go-btn" onclick="startNextMatch()">START MATCH <span id="shop-next-lbl">2</span></button>
+  </div>
+</div>
+
+<!-- Winner Screen -->
+<div id="winner-screen" class="overlay" style="display:none">
+  <div class="overlay-inner">
+    <h1 class="overlay-title">TOURNAMENT OVER</h1>
+    <p class="overlay-sub" id="winner-sub"></p>
+    <div class="winner-banner">
+      <p class="winner-crown">CHAMPION</p>
+      <p class="winner-big-name" id="winner-name"></p>
+      <p class="winner-tag" id="winner-tag"></p>
+    </div>
+    <p class="section-label">FINAL STANDINGS</p>
+    <div id="winner-standings"></div>
+    <button class="big-btn" onclick="showSetupScreen()">NEW GAME</button>
   </div>
 </div>
 
@@ -274,6 +310,7 @@ function makePlayer(i, name, isAI, aiLevel) {
 // ─── Setup screen ─────────────────────────────────────────────────────────────
 function showSetupScreen() {
   document.getElementById('message').style.display = 'none';
+  document.getElementById('winner-screen').style.display = 'none';
   gameRunning = false;
 
   const container = document.getElementById('player-rows');
@@ -784,6 +821,29 @@ function checkAmmoStalemate() {
   }
 }
 
+// ─── Standings ────────────────────────────────────────────────────────────────
+function buildStandingsHTML(matchWinnerId) {
+  const sorted = players.slice().sort((a, b) => b.score - a.score);
+  const rows = sorted.map((p, rank) => {
+    const isTop = rank === 0;
+    const isMatchWin = matchWinnerId != null && p.id === matchWinnerId;
+    const tag = p.isAI ? ` [${(AI_LEVELS[p.aiLevel] || AI_LEVELS[0]).name}]` : '';
+    const flag = isMatchWin ? ' *' : '';
+    const cls = isTop ? 's-top' : isMatchWin ? 's-match-winner' : '';
+    return `<tr${cls ? ` class="${cls}"` : ''}>
+      <td class="s-rank">${rank + 1}</td>
+      <td class="s-name" style="color:${p.color}">${p.name}${tag}${flag}</td>
+      <td class="s-score">${p.score}</td>
+    </tr>`;
+  }).join('');
+  return `<table class="standings-tbl">
+    <thead><tr>
+      <th class="s-rank">#</th><th class="sh-name">PLAYER</th><th style="text-align:right">SCORE</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
 // ─── Match / Shop flow ────────────────────────────────────────────────────────
 function endMatch(winner, stalemate) {
   gameRunning = false;
@@ -806,6 +866,7 @@ function showShop(matchWinner, stalemate) {
   document.getElementById('shop-title').textContent = `MATCH ${matchNum} COMPLETE`;
   document.getElementById('shop-sub').textContent = winText;
   document.getElementById('shop-next-lbl').textContent = matchNum + 1;
+  document.getElementById('shop-standings').innerHTML = buildStandingsHTML(matchWinner ? matchWinner.id : null);
 
   // AI players auto-buy immediately
   players.filter(p => p.isAI).forEach(aiAutoBuy);
@@ -884,9 +945,16 @@ function startNextMatch() {
 
 function endGame() {
   gameRunning = false;
-  const best = players.slice().sort((a,b) => b.score - a.score)[0];
-  const scores = players.map(p => `${p.name}: ${p.score}`).join(' | ');
-  showMsg(`${best.name} WINS!`, scores, true);
+  const sorted = players.slice().sort((a, b) => b.score - a.score);
+  const best = sorted[0];
+  const tag = best.isAI ? ` [${(AI_LEVELS[best.aiLevel] || AI_LEVELS[0]).name}]` : '';
+  document.getElementById('winner-name').textContent = best.name.toUpperCase();
+  document.getElementById('winner-name').style.color = best.color;
+  document.getElementById('winner-tag').textContent = `SCORE: ${best.score}${tag}`;
+  document.getElementById('winner-sub').textContent =
+    `${matchesTotal} match${matchesTotal !== 1 ? 'es' : ''} played`;
+  document.getElementById('winner-standings').innerHTML = buildStandingsHTML(null);
+  document.getElementById('winner-screen').style.display = 'flex';
 }
 
 function showMsg(title, body, newGame) {
