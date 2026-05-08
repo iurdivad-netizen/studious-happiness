@@ -150,6 +150,16 @@
         <option value="10">10</option>
       </select>
     </div>
+    <div class="matches-row">
+      <label>BATTLE ARENA</label>
+      <select id="planet-sel">
+        <option value="0">🌙 Moon    — 0.17g | no wind</option>
+        <option value="1">🔴 Mars    — 0.38g | light wind</option>
+        <option value="2" selected>🌍 Earth   — 1.00g | normal</option>
+        <option value="3">🪐 Jupiter — 2.53g | fierce wind</option>
+        <option value="4">🟠 Titan   — 0.14g | thick atmosphere</option>
+      </select>
+    </div>
     <button class="big-btn" onclick="beginGame()">START GAME</button>
   </div>
 </div>
@@ -192,6 +202,7 @@
     <span class="player-info"><span class="hud-label">CASH:$</span><span class="hud-val" id="cash-val">0</span></span>
     <span class="player-info"><span class="hud-label">MATCH:</span><span class="hud-val" id="match-val">1/5</span></span>
     <span style="flex:1"></span>
+    <span class="player-info"><span class="hud-label">PLANET:</span><span class="hud-val" id="planet-val">Earth</span></span>
     <span class="player-info"><span id="wind-arrow">→</span>&nbsp;<span class="hud-label">WIND:</span><span class="hud-val" id="wind-val">0</span></span>
     <span class="player-info" id="scores-hud"></span>
   </div>
@@ -229,7 +240,8 @@
 const NUM_PLAYERS = 4;
 const TANK_W = 16, TANK_H = 10;
 const BARREL_LEN = 12;
-const GRAVITY = 120;
+const BASE_GRAVITY = 120;
+let gravity = BASE_GRAVITY;
 const FPS = 60;
 const FALL_DEATH_HEIGHT = 150; // px of free-fall before a tank is destroyed
 
@@ -246,6 +258,20 @@ const WEAPONS = [
 
 const PLAYER_COLORS = ['#0f0','#f00','#ff0','#f0f'];
 const PLAYER_NAMES  = ['Player 1','Player 2','Player 3','Player 4'];
+
+// ─── Planets ─────────────────────────────────────────────────────────────────
+const PLANETS = [
+  { name:'Moon',    label:'🌙 Moon    (0.17g)', gravityMult:0.17, windMult:0.0,
+    terrainFill:['#5a5a5a','#787878','#3a3a3a'], terrainStroke:'#a8a8a8' },
+  { name:'Mars',    label:'🔴 Mars    (0.38g)', gravityMult:0.38, windMult:0.5,
+    terrainFill:['#7a3010','#9a4520','#602808'], terrainStroke:'#c06030' },
+  { name:'Earth',   label:'🌍 Earth   (1.00g)', gravityMult:1.00, windMult:1.0,
+    terrainFill:['#3a2a10','#5a3a18','#2a1a08'], terrainStroke:'#3d7a2a' },
+  { name:'Jupiter', label:'🪐 Jupiter (2.53g)', gravityMult:2.53, windMult:2.0,
+    terrainFill:['#4a2a08','#6a4018','#3a2008'], terrainStroke:'#9a6830' },
+  { name:'Titan',   label:'🟠 Titan   (0.14g)', gravityMult:0.14, windMult:0.8,
+    terrainFill:['#283040','#384050','#182030'], terrainStroke:'#706858' },
+];
 
 // ─── AI intelligence levels ───────────────────────────────────────────────────
 // angleVar / powerVar = max ± deviation from perfect aim
@@ -267,6 +293,7 @@ let setupConfig = {
     { name:'Player 4', isAI:true,  aiLevel:-1 },
   ],
   matches: 5,
+  planet: 2,  // default Earth
 };
 
 // ─── Game state ───────────────────────────────────────────────────────────────
@@ -341,6 +368,7 @@ function showSetupScreen() {
   });
 
   document.getElementById('matches-sel').value = setupConfig.matches;
+  document.getElementById('planet-sel').value = setupConfig.planet;
   document.getElementById('setup-screen').style.display = 'flex';
 }
 
@@ -351,6 +379,7 @@ function beginGame() {
     aiLevel: +document.getElementById(`ailevel-${i}`).value,
   }));
   setupConfig.matches = +document.getElementById('matches-sel').value;
+  setupConfig.planet = +document.getElementById('planet-sel').value;
   document.getElementById('setup-screen').style.display = 'none';
   initGame();
 }
@@ -408,30 +437,168 @@ function placeTanks() {
 
 // ─── Drawing ──────────────────────────────────────────────────────────────────
 function drawSky() {
-  const grad = ctx.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#000820');
-  grad.addColorStop(1, '#001440');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, W, H);
-  ctx.fillStyle = '#fff';
-  for (let i = 0; i < 80; i++) {
-    ctx.fillRect((i * 97 + 13) % W, (i * 137 + 7) % (H * 0.6), 1, 1);
+  const pname = PLANETS[setupConfig.planet ?? 2].name;
+
+  if (pname === 'Moon') {
+    // Deep space — no atmosphere
+    ctx.fillStyle = '#000008';
+    ctx.fillRect(0, 0, W, H);
+    // Dense starfield with varying brightness & colour
+    for (let i = 0; i < 280; i++) {
+      const sx = (i * 97 + 13) % W;
+      const sy = (i * 137 + 7) % H;
+      ctx.globalAlpha = i % 5 === 0 ? 0.95 : i % 3 === 0 ? 0.55 : 0.25;
+      ctx.fillStyle = i % 7 === 0 ? '#aaccff' : i % 11 === 0 ? '#ffddaa' : '#ffffff';
+      const sz = i % 9 === 0 ? 2 : 1;
+      ctx.fillRect(sx, sy, sz, sz);
+    }
+    ctx.globalAlpha = 1;
+    // Earth rise — blue marble in upper-right
+    const ex = W * 0.83, ey = H * 0.13, er = Math.min(W, H) * 0.055;
+    const earthG = ctx.createRadialGradient(ex - er*0.3, ey - er*0.3, 0, ex, ey, er);
+    earthG.addColorStop(0, '#55aaee');
+    earthG.addColorStop(0.35, '#2266bb');
+    earthG.addColorStop(0.7, '#114488');
+    earthG.addColorStop(1, '#001122');
+    ctx.beginPath(); ctx.arc(ex, ey, er, 0, Math.PI*2);
+    ctx.fillStyle = earthG; ctx.fill();
+    // Cloud wisps
+    ctx.globalAlpha = 0.38; ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.ellipse(ex-er*0.2, ey-er*0.35, er*0.45, er*0.14, -0.4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(ex+er*0.3, ey+er*0.2, er*0.35, er*0.11, 0.3, 0, Math.PI*2); ctx.fill();
+    ctx.globalAlpha = 1;
+
+  } else if (pname === 'Mars') {
+    // Rusty orange sky with dust
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#6a1c06');
+    grad.addColorStop(0.3, '#a83818');
+    grad.addColorStop(0.7, '#cc5828');
+    grad.addColorStop(1, '#e07840');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+    // Dust haze bands
+    for (let b = 0; b < 4; b++) {
+      const by = H * (0.15 + b * 0.2);
+      const bg = ctx.createLinearGradient(0, by, 0, by + H*0.12);
+      bg.addColorStop(0, 'rgba(200,95,45,0)');
+      bg.addColorStop(0.5, 'rgba(200,95,45,0.14)');
+      bg.addColorStop(1, 'rgba(200,95,45,0)');
+      ctx.fillStyle = bg; ctx.fillRect(0, by, W, H*0.12);
+    }
+    // Suspended dust particles
+    for (let i = 0; i < 90; i++) {
+      ctx.globalAlpha = 0.15 + ((i*31)%10)*0.03;
+      ctx.fillStyle = '#c07840';
+      ctx.fillRect((i*113+27)%W, (i*79+41)%(H*0.88), (i%3)+1, 1);
+    }
+    ctx.globalAlpha = 1;
+    // Phobos — inner irregular moon
+    const phx = W * 0.27, phy = H * 0.09;
+    ctx.beginPath(); ctx.arc(phx, phy, 4, 0, Math.PI*2);
+    ctx.fillStyle = '#c4a870'; ctx.fill();
+    ctx.globalAlpha = 0.25;
+    ctx.beginPath(); ctx.arc(phx, phy, 7, 0, Math.PI*2);
+    ctx.fillStyle = '#c4a870'; ctx.fill();
+    ctx.globalAlpha = 1;
+    // Deimos — outer smaller moon
+    ctx.beginPath(); ctx.arc(W*0.67, H*0.06, 2.5, 0, Math.PI*2);
+    ctx.fillStyle = '#d4b880'; ctx.fill();
+
+  } else if (pname === 'Earth') {
+    // Classic dark-blue space sky with stars
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#000820');
+    grad.addColorStop(1, '#001440');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#fff';
+    for (let i = 0; i < 80; i++) {
+      ctx.fillRect((i * 97 + 13) % W, (i * 137 + 7) % (H * 0.6), 1, 1);
+    }
+
+  } else if (pname === 'Jupiter') {
+    // Iconic banded atmosphere
+    const bands = [
+      ['#c4a450','#ddc070'], ['#f0e4c0','#fffae8'],
+      ['#7a4818','#a06030'], ['#d4a870','#e8c090'],
+      ['#904f20','#c07840'], ['#ecd9a8','#f8ebc0'],
+      ['#b07838','#d09858'], ['#dab470','#ecc888'],
+      ['#c89060','#daa878'], ['#e0c090','#f0d8a8'],
+    ];
+    const bh = H / bands.length;
+    bands.forEach(([c1, c2], idx) => {
+      const by = idx * bh;
+      const bg = ctx.createLinearGradient(0, by, 0, by + bh);
+      bg.addColorStop(0, c1); bg.addColorStop(0.5, c2); bg.addColorStop(1, c1);
+      ctx.fillStyle = bg; ctx.fillRect(0, by, W, bh + 1);
+    });
+    // Subtle horizontal turbulence lines
+    ctx.globalAlpha = 0.055;
+    for (let y = 0; y < H; y += 16) {
+      ctx.beginPath(); ctx.moveTo(0, y);
+      for (let x = 0; x <= W; x += 30) {
+        ctx.lineTo(x, y + Math.sin(x * 0.05 + y * 0.015) * 7);
+      }
+      ctx.strokeStyle = '#fff8e0'; ctx.lineWidth = 10; ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    // Great Red Spot
+    const gx = W * 0.62, gy = H * 0.48;
+    ctx.save(); ctx.globalAlpha = 0.7;
+    ctx.beginPath(); ctx.ellipse(gx, gy, 70, 40, 0, 0, Math.PI*2);
+    const grd = ctx.createRadialGradient(gx-18, gy-12, 0, gx, gy, 70);
+    grd.addColorStop(0, '#dd5533');
+    grd.addColorStop(0.45, '#aa3322');
+    grd.addColorStop(1, 'rgba(160,55,30,0)');
+    ctx.fillStyle = grd; ctx.fill(); ctx.restore();
+
+  } else if (pname === 'Titan') {
+    // Titan's dense orange-brown photochemical haze (Saturn's moon)
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#180600');
+    grad.addColorStop(0.2, '#401808');
+    grad.addColorStop(0.55, '#804018');
+    grad.addColorStop(1, '#b86828');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
+    // Multiple thick haze layers
+    for (let layer = 0; layer < 6; layer++) {
+      const ly = H * (0.04 + layer * 0.16);
+      const lgrad = ctx.createLinearGradient(0, ly, 0, ly + H*0.13);
+      lgrad.addColorStop(0, 'rgba(170,80,18,0)');
+      lgrad.addColorStop(0.5, 'rgba(170,80,18,0.13)');
+      lgrad.addColorStop(1, 'rgba(170,80,18,0)');
+      ctx.fillStyle = lgrad; ctx.fillRect(0, ly, W, H*0.13);
+    }
+    // Saturn dimly visible through the haze in upper-right
+    ctx.save(); ctx.globalAlpha = 0.22;
+    const satX = W * 0.76, satY = H * 0.15;
+    const sr = Math.min(W, H) * 0.042;
+    const satGrd = ctx.createRadialGradient(satX - sr*0.2, satY - sr*0.2, 0, satX, satY, sr);
+    satGrd.addColorStop(0, '#f0d090'); satGrd.addColorStop(1, '#b08030');
+    ctx.beginPath(); ctx.arc(satX, satY, sr, 0, Math.PI*2);
+    ctx.fillStyle = satGrd; ctx.fill();
+    // Rings — two ellipses
+    ctx.strokeStyle = '#d4a848'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.ellipse(satX, satY, sr*2.4, sr*0.55, 0, 0, Math.PI*2); ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(satX, satY, sr*2.9, sr*0.7, 0, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
   }
 }
 
 function drawTerrain() {
+  const planet = PLANETS[setupConfig.planet ?? 2];
   ctx.beginPath();
   ctx.moveTo(0, H);
   for (let x = 0; x < W; x++) ctx.lineTo(x, terrain[x]);
   ctx.lineTo(W, H);
   ctx.closePath();
   const grad = ctx.createLinearGradient(0, H*0.3, 0, H);
-  grad.addColorStop(0, '#3a2a10');
-  grad.addColorStop(0.4, '#5a3a18');
-  grad.addColorStop(1, '#2a1a08');
+  grad.addColorStop(0, planet.terrainFill[0]);
+  grad.addColorStop(0.4, planet.terrainFill[1]);
+  grad.addColorStop(1, planet.terrainFill[2]);
   ctx.fillStyle = grad;
   ctx.fill();
-  ctx.strokeStyle = '#3d7a2a';
+  ctx.strokeStyle = planet.terrainStroke;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(0, terrain[0]);
@@ -564,7 +731,7 @@ function updateTankPhysics(dt) {
     if (p.y < ty) {
       // Tank is above terrain – apply gravity
       if (p.fallStart === null) p.fallStart = p.y;
-      p.vy += GRAVITY * dt;
+      p.vy += gravity * dt;
       p.y  += p.vy * dt;
       if (p.y >= ty) {
         // Just landed
@@ -657,7 +824,7 @@ function aiTakeTurn() {
   for (const power of [50, 60, 40, 70, 30, 80, 90]) {
     if (Math.abs(rdx) < 2) { solvedAngle = 90; solvedPower = power; break; }
     const speed = power * 4;
-    const k = 0.5 * GRAVITY * rdx * rdx / (speed * speed);
+    const k = 0.5 * gravity * rdx * rdx / (speed * speed);
     const disc = rdx*rdx - 4*k*(k - rdy);
     if (disc < 0) continue;
     const sq = Math.sqrt(disc);
@@ -741,7 +908,7 @@ function physicsStep(dt) {
       if (proj.trail.length > 18) proj.trail.shift();
     }
     proj.vx += wind * dt * 0.5;
-    if (!proj.roller) proj.vy += GRAVITY * dt;
+    if (!proj.roller) proj.vy += gravity * dt;
     proj.x += proj.vx * dt;
     proj.y += proj.vy * dt;
     proj.life--;
@@ -1070,10 +1237,13 @@ function startMatch() {
     p.vy = 0;
     p.fallStart = null;
   });
+  const planet = PLANETS[setupConfig.planet ?? 2];
+  gravity = BASE_GRAVITY * planet.gravityMult;
   generateTerrain();
   placeTanks();
   currentPlayer = 0;
-  wind = (Math.random()*2 - 1) * 40;
+  wind = (Math.random()*2 - 1) * 40 * planet.windMult;
+  document.getElementById('planet-val').textContent = planet.name.toUpperCase();
   projectiles = [];
   explosions = [];
   animating = false;
