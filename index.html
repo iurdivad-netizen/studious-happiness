@@ -989,10 +989,27 @@ function initGame() {
 
 window.addEventListener('resize', () => {
   if (!gameRunning) return;
+  const oldW = W, oldH = H;
   W = canvas.width  = canvas.parentElement.clientWidth;
   H = canvas.height = canvas.parentElement.clientHeight;
-  generateTerrain();
-  placeTanks();
+  const wScale = W / oldW, hScale = H / oldH;
+
+  // Re-sample terrain to new dimensions without regenerating
+  const oldTerrain = terrain.slice();
+  terrain = new Array(W);
+  for (let x = 0; x < W; x++) {
+    const ox = x / wScale;
+    const lo = Math.floor(ox), hi = Math.min(lo + 1, oldW - 1);
+    const frac = ox - lo;
+    terrain[x] = (oldTerrain[lo] * (1 - frac) + oldTerrain[hi] * frac) * hScale;
+  }
+
+  // Scale tank positions proportionally
+  players.forEach(p => {
+    p.x = Math.max(0, Math.min(W - 1, Math.round(p.x * wScale)));
+    p.y = terrain[p.x];
+  });
+
   render();
 });
 
