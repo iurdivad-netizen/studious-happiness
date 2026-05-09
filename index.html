@@ -131,6 +131,37 @@
   .shop-note { color: #444; font-size: 11px; text-align: center; margin-top: 10px; }
   #fast-btn.fast-active { background: #ff0; color: #000; }
   #fast-btn.fast-active:hover { background: #cc0; }
+
+  /* ── Mobile adjustments ─────────────────────────────────── */
+  @media (max-width: 640px) {
+    #hud { gap: 6px; padding: 3px 6px; font-size: 11px; min-height: 32px; }
+    #hud .current-player { font-size: 12px; }
+    #scores-hud { display: none; }
+    #controls { gap: 6px 10px; padding: 5px 8px; }
+    input[type=range] { width: 150px; height: 8px; }
+    input[type=range]::-webkit-slider-thumb { width: 22px; height: 22px; }
+    input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #0f0; border: none; cursor: pointer; }
+    #fire-btn { font-size: 15px; padding: 7px 20px; }
+    #controls > span:last-child { display: none; }
+    .overlay-inner { padding: 16px 14px; }
+    .overlay-title { font-size: 18px; }
+    .player-row { flex-wrap: wrap; }
+    .ai-toggle { margin-left: 0; }
+    #message { width: 90vw; padding: 14px 18px; font-size: 15px; }
+  }
+  @media (max-width: 400px) {
+    input[type=range] { width: 110px; }
+    .p-name-input { width: 100px; }
+    .ctrl-group label { display: none; }
+  }
+  #touch-hint {
+    display: none; position: absolute; bottom: 8px; left: 50%;
+    transform: translateX(-50%); background: rgba(0,0,0,0.75);
+    border: 1px solid #0f0; color: #0f0; padding: 4px 12px;
+    font-size: 10px; letter-spacing: 1px; pointer-events: none;
+    white-space: nowrap; z-index: 5;
+  }
+  @media (pointer: coarse) { #touch-hint { display: block; } }
 </style>
 </head>
 <body>
@@ -230,6 +261,7 @@
   </div>
   <div id="canvas-wrap">
     <canvas id="canvas"></canvas>
+    <div id="touch-hint">DRAG TO AIM &nbsp;|&nbsp; TAP FIRE BTN</div>
     <div id="message">
       <h2 id="msg-title">GAME OVER</h2>
       <p id="msg-body"></p>
@@ -336,6 +368,7 @@ let setupConfig = {
 
 // ─── Game state ───────────────────────────────────────────────────────────────
 let canvas, ctx, W, H;
+let dpr = 1;
 let terrain = [];
 let activePlanetIdx = 2; // resolved planet for the current match
 let players = [];
@@ -1294,9 +1327,16 @@ function syncSliders() {
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
+function resizeCanvas() {
+  W = canvas.parentElement.clientWidth;
+  H = canvas.parentElement.clientHeight;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
 function startMatch() {
-  W = canvas.width  = canvas.parentElement.clientWidth;
-  H = canvas.height = canvas.parentElement.clientHeight;
+  resizeCanvas();
   // Revive all, reset HP; keep score, cash, and purchased inventory
   players.forEach(p => {
     p.hp = 100;
@@ -1350,11 +1390,42 @@ function initGame() {
   startMatch();
 }
 
+// ─── Touch controls ───────────────────────────────────────────────────────────
+let touchState = null;
+function setupTouchControls() {
+  canvas.addEventListener('touchstart', e => {
+    if (!gameRunning || animating || players[currentPlayer].isAI) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    touchState = {
+      startX: t.clientX - rect.left,
+      startY: t.clientY - rect.top,
+      startAngle: players[currentPlayer].angle,
+      startPower:  players[currentPlayer].power,
+    };
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', e => {
+    if (!gameRunning || animating || players[currentPlayer].isAI || !touchState) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const dx = (t.clientX - rect.left) - touchState.startX;
+    const dy = (t.clientY - rect.top)  - touchState.startY;
+    const p = players[currentPlayer];
+    p.angle = Math.max(0,   Math.min(180, Math.round(touchState.startAngle + dx * 0.5)));
+    p.power = Math.max(5,   Math.min(100, Math.round(touchState.startPower  - dy * 0.3)));
+    syncSliders();
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', () => { touchState = null; });
+}
+
 window.addEventListener('resize', () => {
   if (!gameRunning) return;
   const oldW = W, oldH = H;
-  W = canvas.width  = canvas.parentElement.clientWidth;
-  H = canvas.height = canvas.parentElement.clientHeight;
+  resizeCanvas();
   const wScale = W / oldW, hScale = H / oldH;
 
   // Re-sample terrain to new dimensions without regenerating
@@ -1379,8 +1450,9 @@ window.addEventListener('resize', () => {
 window.onload = () => {
   canvas = document.getElementById('canvas');
   ctx = canvas.getContext('2d');
-  W = canvas.width  = canvas.parentElement.clientWidth;
-  H = canvas.height = canvas.parentElement.clientHeight;
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  resizeCanvas();
+  setupTouchControls();
   generateTerrain();
   requestAnimationFrame(loop);
   showSetupScreen();
