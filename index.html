@@ -260,6 +260,15 @@
 <script>
 // ─── Constants ───────────────────────────────────────────────────────────────
 const TANK_W = 16, TANK_H = 10;
+
+function shuffleArray(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 const BARREL_LEN = 12;
 const BASE_GRAVITY = 120;
 let gravity = BASE_GRAVITY;
@@ -331,6 +340,8 @@ let terrain = [];
 let activePlanetIdx = 2; // resolved planet for the current match
 let players = [];
 let currentPlayer = 0;
+let turnOrder = [];
+let currentTurnIdx = 0;
 let wind = 0;
 let projectiles = [];
 let explosions = [];
@@ -474,8 +485,10 @@ function generateTerrain() {
 
 function placeTanks() {
   const spacing = W / (players.length + 1);
+  const slots = shuffleArray(players.map((_, i) => i));
   for (let i = 0; i < players.length; i++) {
-    const bx = Math.round(spacing * (i + 1));
+    const slot = slots[i];
+    const bx = Math.round(spacing * (slot + 1));
     const cx = Math.max(20, Math.min(W-20, bx + Math.round((Math.random()-0.5)*spacing*0.4)));
     const ty = terrain[cx];
     for (let dx = -10; dx <= 10; dx++) {
@@ -483,6 +496,7 @@ function placeTanks() {
     }
     players[i].x = cx;
     players[i].y = ty;
+    players[i].angle = cx < W / 2 ? 45 : 135;
   }
 }
 
@@ -1021,14 +1035,13 @@ function loop(ts) {
 function nextTurn() {
   let tries = 0;
   do {
-    currentPlayer = (currentPlayer + 1) % players.length;
+    currentTurnIdx = (currentTurnIdx + 1) % turnOrder.length;
+    if (currentTurnIdx === 0) updateWindHUD();
     tries++;
-    if (tries > players.length) break;
-  } while (!players[currentPlayer].alive);
+    if (tries > turnOrder.length) break;
+  } while (!players[turnOrder[currentTurnIdx]].alive);
+  currentPlayer = turnOrder[currentTurnIdx];
 
-  if (currentPlayer === 0) {
-    updateWindHUD();
-  }
   updateHUD();
   updateWeaponSelect();
   if (players[currentPlayer].isAI) {
@@ -1285,10 +1298,9 @@ function startMatch() {
   W = canvas.width  = canvas.parentElement.clientWidth;
   H = canvas.height = canvas.parentElement.clientHeight;
   // Revive all, reset HP; keep score, cash, and purchased inventory
-  players.forEach((p, i) => {
+  players.forEach(p => {
     p.hp = 100;
     p.alive = true;
-    p.angle = i < Math.ceil(players.length / 2) ? 45 : 135;
     p.weapon = 0;
     p.vy = 0;
     p.fallStart = null;
@@ -1300,8 +1312,10 @@ function startMatch() {
   const planet = PLANETS[activePlanetIdx];
   gravity = BASE_GRAVITY * planet.gravityMult;
   generateTerrain();
-  placeTanks();
-  currentPlayer = 0;
+  placeTanks(); // also sets each player's angle based on spawn x
+  turnOrder = shuffleArray(players.map((_, i) => i));
+  currentTurnIdx = 0;
+  currentPlayer = turnOrder[0];
   wind = (Math.random()*2 - 1) * 40 * planet.windMult;
   document.getElementById('planet-val').textContent =
     (setupConfig.gravityMode === 'random' ? '? ' : '') + planet.name.toUpperCase();
