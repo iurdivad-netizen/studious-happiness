@@ -284,7 +284,7 @@
       <select id="weapon-select"></select>
     </div>
     <button id="fire-btn" onclick="fire()">FIRE!</button>
-    <button id="fast-btn" onclick="toggleFastMode()" style="display:none" title="Speed up AI-only matches">⚡ FAST</button>
+    <button id="fast-btn" onclick="toggleFastMode()" title="Cycle animation/thinking speed">⚡ FAST</button>
     <span style="font-size:11px;color:#555">← → angle &nbsp;|&nbsp; [ ] power &nbsp;|&nbsp; SPACE fire</span>
   </div>
 </div>
@@ -382,9 +382,9 @@ let gameRunning = false;
 let animating = false;
 let matchNum = 1;
 let matchesTotal = 5;
-let speedLevel = 0; // 0 = normal, 1 = fast, 2 = fastest, 3 = ultra
-const SPEED_LABELS  = ['⚡ FAST', '⚡⚡ FASTEST', '⚡⚡⚡ ULTRA', '▷ NORMAL'];
-const SPEED_STEPS   = [20, 80, 400];
+let speedLevel = 0; // 0 = normal, 1 = fast, 2 = fastest, 3 = ultra, 4 = instant
+const SPEED_LABELS  = ['⚡ FAST', '⚡⚡ FASTEST', '⚡⚡⚡ ULTRA', '⏩ INSTANT', '▷ NORMAL'];
+const SPEED_STEPS   = [20, 80, 400, 100000];
 
 // ─── Player factory ───────────────────────────────────────────────────────────
 function makePlayer(i, name, isAI, aiLevel) {
@@ -1235,23 +1235,17 @@ function showMsg(title, body, newGame) {
 
 // ─── Fast mode ────────────────────────────────────────────────────────────────
 function toggleFastMode() {
-  speedLevel = (speedLevel + 1) % 4;
+  speedLevel = (speedLevel + 1) % 5;
   const btn = document.getElementById('fast-btn');
   btn.textContent = SPEED_LABELS[speedLevel];
   btn.classList.toggle('fast-active', speedLevel > 0);
 }
 
 function updateFastBtn() {
-  const allAI = players.length > 0 && players.every(p => p.isAI);
-  const noAliveHumans = gameRunning && players.some(p => p.alive) && players.filter(p => p.alive).every(p => p.isAI);
-  const showFast = allAI || noAliveHumans;
   const btn = document.getElementById('fast-btn');
-  btn.style.display = showFast ? '' : 'none';
-  if (!showFast && speedLevel > 0) {
-    speedLevel = 0;
-    btn.textContent = SPEED_LABELS[0];
-    btn.classList.remove('fast-active');
-  }
+  btn.style.display = '';
+  btn.textContent = SPEED_LABELS[speedLevel];
+  btn.classList.toggle('fast-active', speedLevel > 0);
 }
 
 // ─── HUD ──────────────────────────────────────────────────────────────────────
