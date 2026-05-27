@@ -217,6 +217,10 @@
       <label>SOUND EFFECTS</label>
       <button class="sound-toggle-btn" id="setup-sound-btn" onclick="toggleSound()">🔊 ON</button>
     </div>
+    <div class="matches-row">
+      <label>MUSIC</label>
+      <button class="sound-toggle-btn" id="setup-music-btn" onclick="toggleMusic()">🎵 ON</button>
+    </div>
     <div class="matches-row" id="planet-row">
       <label>BATTLE ARENA</label>
       <select id="planet-sel">
@@ -300,6 +304,7 @@
     <button id="fire-btn" onclick="fire()">FIRE!</button>
     <button id="fast-btn" onclick="toggleFastMode()" title="Cycle animation/thinking speed">⚡ FAST</button>
     <button class="sound-toggle-btn" id="game-sound-btn" onclick="toggleSound()" title="Toggle sound effects">🔊 ON</button>
+    <button class="sound-toggle-btn" id="game-music-btn" onclick="toggleMusic()" title="Toggle music">🎵 ON</button>
     <span style="font-size:11px;color:#555">← → angle &nbsp;|&nbsp; [ ] power &nbsp;|&nbsp; SPACE fire</span>
   </div>
 </div>
@@ -495,6 +500,150 @@ function updateSoundBtns() {
   }
 }
 
+// ─── Music ────────────────────────────────────────────────────────────────────
+function midi(n) { return 440 * Math.pow(2, (n - 69) / 12); }
+
+const MusicManager = {
+  ctx: null,
+  master: null,
+  enabled: (() => { try { return localStorage.getItem('musicOn') !== '0'; } catch(e) { return true; } })(),
+  mode: null,        // 'menu' | 'game' | null
+  schedTimer: null,
+  nextTime: 0,
+  step: 0,
+  _initCtx() {
+    SoundManager.init();
+    if (!SoundManager.ctx) return false;
+    this.ctx = SoundManager.ctx;
+    if (!this.master) {
+      this.master = this.ctx.createGain();
+      this.master.gain.value = 0.16;
+      this.master.connect(this.ctx.destination);
+    }
+    return true;
+  },
+  setEnabled(on) {
+    this.enabled = on;
+    try { localStorage.setItem('musicOn', on ? '1' : '0'); } catch(e) {}
+    if (!on) this._stopTimer();
+    else if (this.mode) this._startTimer();
+  },
+  play(mode) {
+    if (this.mode === mode && this.schedTimer) return;
+    this.mode = mode;
+    if (this.enabled) this._startTimer();
+  },
+  stop() {
+    this.mode = null;
+    this._stopTimer();
+  },
+  _stopTimer() {
+    if (this.schedTimer) { clearInterval(this.schedTimer); this.schedTimer = null; }
+  },
+  _startTimer() {
+    if (!this._initCtx()) return;
+    // Wait for first user gesture before scheduling — otherwise notes pile up
+    // against a suspended context and burst when it resumes.
+    if (this.ctx.state !== 'running') return;
+    this._stopTimer();
+    this.step = 0;
+    this.nextTime = this.ctx.currentTime + 0.1;
+    this.schedTimer = setInterval(() => this._tick(), 25);
+  },
+  _tick() {
+    if (!this.enabled || !this.mode || !this.ctx) return;
+    const spb = this.mode === 'menu' ? 0.38 : 0.21; // seconds per step
+    while (this.nextTime < this.ctx.currentTime + 0.2) {
+      if (this.mode === 'menu') this._menuStep(this.step, this.nextTime);
+      else this._gameStep(this.step, this.nextTime);
+      this.nextTime += spb;
+      this.step++;
+    }
+  },
+  // Slow ambient pad + arpeggio in A minor: Am - F - C - G
+  _menuStep(step, t) {
+    const chords = [
+      [57, 60, 64],     // Am
+      [53, 57, 60],     // F
+      [48, 52, 55, 60], // C
+      [55, 59, 62],     // G
+    ];
+    const chord = chords[Math.floor((step % 16) / 4)];
+    if (step % 4 === 0) {
+      for (const n of chord) this._note(midi(n), 1.6, t, 'sine', 0.10);
+      this._note(midi(chord[0] - 12), 1.6, t, 'triangle', 0.09);
+    }
+    const arp = chord[step % chord.length];
+    this._note(midi(arp + 12), 0.45, t, 'triangle', 0.08);
+  },
+  // Driving bass + arpeggio + hat in E minor: Em - C - G - D
+  _gameStep(step, t) {
+    const roots = [40, 36, 43, 38]; // E2 C2 G2 D2
+    const chords = [
+      [40, 43, 47, 50], // Em add4 motion
+      [36, 40, 43, 48], // C
+      [43, 47, 50, 55], // G
+      [38, 42, 45, 50], // D
+    ];
+    const cIdx = Math.floor((step % 16) / 4);
+    const chord = chords[cIdx];
+    // bass: every other step
+    if (step % 2 === 0) this._note(midi(roots[cIdx]), 0.22, t, 'sawtooth', 0.09);
+    // arpeggio up the chord
+    const arp = chord[step % chord.length];
+    this._note(midi(arp + 12), 0.16, t, 'square', 0.05);
+    // hi-hat on offbeats
+    if (step % 2 === 1) this._noise(0.04, t, 0.05);
+    // lead accent at top of phrase
+    if (step % 16 === 12) this._note(midi(chord[chord.length-1] + 24), 0.5, t, 'triangle', 0.07);
+  },
+  _note(freq, dur, when, type, peak) {
+    const osc = this.ctx.createOscillator();
+    osc.type = type;
+    osc.frequency.value = freq;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.linearRampToValueAtTime(peak, when + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    osc.connect(g).connect(this.master);
+    osc.start(when);
+    osc.stop(when + dur + 0.05);
+  },
+  _noise(dur, when, peak) {
+    const sr = this.ctx.sampleRate;
+    const len = Math.max(1, Math.floor(sr * dur));
+    const buf = this.ctx.createBuffer(1, len, sr);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const filt = this.ctx.createBiquadFilter();
+    filt.type = 'highpass';
+    filt.frequency.value = 6000;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(peak, when);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    src.connect(filt).connect(g).connect(this.master);
+    src.start(when);
+    src.stop(when + dur + 0.05);
+  },
+};
+
+function toggleMusic() {
+  MusicManager.setEnabled(!MusicManager.enabled);
+  updateMusicBtns();
+}
+
+function updateMusicBtns() {
+  const txt = MusicManager.enabled ? '🎵 ON' : '🎵 OFF';
+  for (const id of ['setup-music-btn', 'game-music-btn']) {
+    const btn = document.getElementById(id);
+    if (!btn) continue;
+    btn.textContent = txt;
+    btn.classList.toggle('sfx-off', !MusicManager.enabled);
+  }
+}
+
 // ─── Weapons ──────────────────────────────────────────────────────────────────
 const WEAPONS = [
   { name:'Baby Missile', cost:0,   radius:14,  damage:25,  projectiles:1, spread:0,   color:'#ff0', trail:'#fa0' },
@@ -652,6 +801,8 @@ function showSetupScreen() {
   document.getElementById('planet-row').style.display = setupConfig.gravityMode === 'fixed' ? '' : 'none';
   document.getElementById('setup-screen').style.display = 'flex';
   updateSoundBtns();
+  updateMusicBtns();
+  MusicManager.play('menu');
 }
 
 function beginGame() {
@@ -665,6 +816,7 @@ function beginGame() {
   setupConfig.gravityMode = document.getElementById('gravity-mode-sel').value;
   setupConfig.planet = +document.getElementById('planet-sel').value;
   document.getElementById('setup-screen').style.display = 'none';
+  MusicManager.play('game');
   initGame();
 }
 
@@ -1644,9 +1796,14 @@ window.onload = () => {
   requestAnimationFrame(loop);
   showSetupScreen();
   updateSoundBtns();
+  updateMusicBtns();
   // AudioContext must be created/resumed in response to a user gesture
   const armAudio = () => {
-    if (SoundManager.enabled) { SoundManager.init(); SoundManager.resume(); }
+    SoundManager.init();
+    SoundManager.resume();
+    if (MusicManager.enabled && MusicManager.mode && !MusicManager.schedTimer) {
+      MusicManager._startTimer();
+    }
     window.removeEventListener('pointerdown', armAudio);
     window.removeEventListener('keydown', armAudio);
   };
