@@ -1174,6 +1174,22 @@ function getTerrainY(x) {
   return (xi < 0 || xi >= W) ? H : terrain[xi];
 }
 
+// Returns the first alive tank whose body contains (px, py), or null.
+// Tank body box covers the rectangular hull plus the small turret dome on top.
+function tankAt(px, py, excludeId) {
+  for (const p of players) {
+    if (!p.alive) continue;
+    if (p.id === excludeId) continue;
+    if (px >= p.x - TANK_W / 2 - 1 &&
+        px <= p.x + TANK_W / 2 + 1 &&
+        py >= p.y - TANK_H - 5 &&
+        py <= p.y + 1) {
+      return p;
+    }
+  }
+  return null;
+}
+
 function blastCrater(cx, cy, radius) {
   const r2 = radius * radius;
   for (let x = Math.max(0, Math.floor(cx - radius)); x <= Math.min(W - 1, Math.ceil(cx + radius)); x++) {
@@ -1396,10 +1412,29 @@ function physicsStep(dt) {
     }
     proj.vx += wind * dt * 0.5;
     if (!proj.roller) proj.vy += gravity * dt;
+    const oldX = proj.x, oldY = proj.y;
     proj.x += proj.vx * dt;
     proj.y += proj.vy * dt;
     proj.life--;
     const ty = getTerrainY(proj.x);
+
+    // Tank collision — projectiles explode on direct contact with a tank.
+    // Sample points along the swept path so fast shots can't tunnel through.
+    let hitX = null, hitY = null;
+    const segLen = Math.hypot(proj.x - oldX, proj.y - oldY);
+    const samples = Math.max(1, Math.ceil(segLen / 4));
+    for (let s = 1; s <= samples; s++) {
+      const t = s / samples;
+      const sx = oldX + (proj.x - oldX) * t;
+      const sy = oldY + (proj.y - oldY) * t;
+      if (tankAt(sx, sy, proj.ownerId)) { hitX = sx; hitY = sy; break; }
+    }
+    if (hitX !== null) {
+      explodeAt(hitX, hitY, proj.weapon, proj.ownerId);
+      projectiles.splice(i, 1);
+      continue;
+    }
+
     if (proj.roller) {
       if (proj.y >= ty) {
         proj.y = ty; proj.vy = 0; proj.vx *= 0.98;
