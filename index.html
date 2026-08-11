@@ -1669,9 +1669,18 @@ function runAsteroid() {
   return 'Something big is coming down';
 }
 
-// The ground settles: peaks slump, hollows fill, anyone left hanging drops.
+// Two ways the ground can give: a field-wide settling, or one patch caving in.
 function runEarthquake() {
   if (!terrain.length) return null;
+  quakeMax = quakeTicks = 55;
+  quakeAmp = 6 + Math.random() * 4;
+  eventHold = 55;
+  SoundManager.playQuake();
+  return Math.random() < 0.5 ? quakeSlump() : quakeFissure();
+}
+
+// Everything settles: peaks slump, hollows fill, anyone left hanging drops.
+function quakeSlump() {
   const radius = 22 + Math.floor(Math.random() * 22);
   const amount = 0.35 + Math.random() * 0.25;
   // Box blur via prefix sums, blended back over the old surface
@@ -1685,11 +1694,34 @@ function runEarthquake() {
   for (let x = 0; x < W; x++) {
     terrain[x] = Math.min(H - 2, terrain[x] * (1 - amount) + settled[x] * amount);
   }
-  quakeMax = quakeTicks = 55;
-  quakeAmp = 6 + Math.random() * 4;
-  eventHold = 55;
-  SoundManager.playQuake();
   return 'The ground slumps under everyone';
+}
+
+// One patch caves in: a bowl-shaped chasm, deep enough that the drop can kill.
+function quakeFissure() {
+  const target = Math.random() < 0.6 ? randomAlivePlayer() : null;
+  const cx = target
+    ? Math.max(0, Math.min(W - 1, target.x + (Math.random()*2 - 1) * 70))
+    : Math.random() * W;
+  const half  = 34 + Math.random() * 72;    // 68–212px across
+  const depth = 55 + Math.random() * 130;   // past FALL_DEATH_HEIGHT at its worst
+  const rim   = half * 1.3;
+
+  for (let x = Math.max(0, Math.floor(cx - rim)); x <= Math.min(W - 1, Math.ceil(cx + rim)); x++) {
+    const d = Math.abs(x - cx);
+    if (d <= half) {
+      // Smooth bowl, deepest at the middle and flush with the surface at the lip
+      const fall = depth * Math.pow(Math.cos((d / half) * Math.PI / 2), 1.4);
+      terrain[x] = Math.min(H - 2, terrain[x] + fall);
+    } else {
+      // Spoil heaped just outside the lip
+      const t = (d - half) / (rim - half);
+      terrain[x] = Math.max(H * 0.05, terrain[x] - 10 * (1 - t) * (1 - t));
+    }
+  }
+  return target
+    ? `The ground caves in under ${target.name}`
+    : 'A chasm caves in across the field';
 }
 
 // The wind swings hard — every shot this round has to account for it.
