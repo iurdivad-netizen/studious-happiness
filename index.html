@@ -1309,6 +1309,55 @@ function drawTank(p) {
   ctx.strokeRect(x - bw/2, y - TANK_H - 19, bw, bh);
 }
 
+// Marks whose turn it is: a bobbing chevron over the tank plus a pulsing ring
+// around the hull, both in the player's colour, so it reads at a glance.
+function drawTurnMarker(p) {
+  const bob   = Math.sin(animTime * 4.5) * 4;
+  const pulse = 0.5 + 0.5 * Math.sin(animTime * 4);
+  const ping  = (animTime % 1.4) / 1.4;      // radar ring, expands then fades
+  // Clear of the name + health bar, but never so high it clips off the top
+  const tipY  = Math.max(30, p.y - TANK_H - 26 - bob);
+  const cy    = p.y - TANK_H / 2;
+
+  ctx.save();
+  ctx.strokeStyle = p.color;
+
+  // expanding ping — catches the eye from across the field
+  ctx.globalAlpha = 0.55 * (1 - ping);
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(p.x, cy, 14 + ping * 34, 0, Math.PI*2);
+  ctx.stroke();
+
+  // steady ring hugging the hull
+  ctx.globalAlpha = 0.45 + 0.4 * pulse;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.ellipse(p.x, cy, 19 + pulse * 3, 15 + pulse * 2, 0, 0, Math.PI*2);
+  ctx.stroke();
+
+  // bobbing chevron pointing down at the tank
+  ctx.globalAlpha = 1;
+  ctx.shadowColor = p.color;
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = p.color;
+  ctx.beginPath();
+  ctx.moveTo(p.x, tipY);
+  ctx.lineTo(p.x - 11, tipY - 15);
+  ctx.lineTo(p.x - 4,  tipY - 15);
+  ctx.lineTo(p.x - 4,  tipY - 24);
+  ctx.lineTo(p.x + 4,  tipY - 24);
+  ctx.lineTo(p.x + 4,  tipY - 15);
+  ctx.lineTo(p.x + 11, tipY - 15);
+  ctx.closePath();
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 1.2;
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawExplosions() {
   for (const ex of explosions) {
     ctx.save();
@@ -1364,6 +1413,9 @@ function render() {
   drawTerrain();
   drawExplosions();
   for (const p of players) drawTank(p);
+  // After every tank, so a neighbour can never draw over the marker
+  const turnTank = players[currentPlayer];
+  if (gameRunning && turnTank && turnTank.alive) drawTurnMarker(turnTank);
   drawProjectiles();
   drawEventFx();
   ctx.restore();
@@ -1889,6 +1941,7 @@ function fire() {
 
 // ─── Animation loop ───────────────────────────────────────────────────────────
 let lastTime = 0;
+let animTime = 0;   // seconds since page load, drives idle animations
 
 function physicsStep(dt) {
   updateEventFx(dt);
@@ -2020,6 +2073,7 @@ function physicsStep(dt) {
 function loop(ts) {
   const realDt = Math.min((ts - lastTime) / 1000, 0.05);
   lastTime = ts;
+  animTime = ts / 1000;
 
   if (speedLevel > 0 && animating) {
     const steps = SPEED_STEPS[speedLevel - 1];
@@ -2338,6 +2392,9 @@ function resizeCanvas() {
 function startMatch() {
   resizeCanvas();
   clearEventFx();
+  // Fast-forward is a per-match convenience: every match opens at normal speed
+  // even if the last one was left running on ULTRA.
+  speedLevel = 0;
   eventsChance = EVENT_CHANCE[setupConfig.events] ?? 0;
   // Revive all, reset HP; keep score, cash, and purchased inventory
   players.forEach(p => {
