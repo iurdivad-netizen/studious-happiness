@@ -178,6 +178,22 @@
     .p-name-input { width: 100px; }
     .ctrl-group label { display: none; }
   }
+  /* ── Random event banner ────────────────────────────────── */
+  #event-banner {
+    position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.82); border: 1px solid #ff0; color: #ff0;
+    padding: 6px 20px; font-size: 15px; letter-spacing: 3px; text-align: center;
+    z-index: 6; display: none; pointer-events: none; white-space: nowrap;
+    max-width: 94%; overflow: hidden; text-overflow: ellipsis;
+  }
+  #event-banner .eb-sub {
+    display: block; color: #0f0; font-size: 11px;
+    letter-spacing: 1px; margin-top: 3px;
+  }
+  @media (max-width: 640px) {
+    #event-banner { font-size: 12px; padding: 4px 12px; letter-spacing: 2px; }
+    #event-banner .eb-sub { font-size: 10px; }
+  }
   #touch-hint {
     display: none; position: absolute; bottom: 8px; left: 50%;
     transform: translateX(-50%); background: rgba(0,0,0,0.75);
@@ -243,6 +259,15 @@
         <span class="vol-val" id="setup-music-vol-val">50%</span>
       </div>
     </div>
+    <div class="matches-row">
+      <label>RANDOM EVENTS</label>
+      <select id="events-sel">
+        <option value="off">Off — nothing but tanks</option>
+        <option value="rare">Rare — ~1 turn in 10</option>
+        <option value="occasional" selected>Occasional — ~1 turn in 5</option>
+        <option value="chaos">Chaos — ~2 turns in 5</option>
+      </select>
+    </div>
     <div class="matches-row" id="planet-row">
       <label>BATTLE ARENA</label>
       <select id="planet-sel">
@@ -302,6 +327,10 @@
   <div id="canvas-wrap">
     <canvas id="canvas"></canvas>
     <div id="touch-hint">DRAG TO AIM &nbsp;|&nbsp; TAP FIRE BTN</div>
+    <div id="event-banner">
+      <span id="event-banner-title"></span>
+      <span class="eb-sub" id="event-banner-sub"></span>
+    </div>
     <div id="message">
       <h2 id="msg-title">GAME OVER</h2>
       <p id="msg-body"></p>
@@ -520,6 +549,45 @@ const SoundManager = {
     if (!this.ctx) return;
     this._boom(60, 1.0, 0.6);
     this._noise(0.5, 0.3, 'highpass', 400);
+  },
+  // ── Random event cues ──────────────────────────────────────────────
+  playThunder() {
+    if (!this.enabled) return;
+    this.init(); this.resume();
+    if (!this.ctx) return;
+    this._noise(0.06, 0.5, 'highpass', 3000);          // the crack
+    this._sweep(2400, 900, 0.08, 'square', 0.2);
+    setTimeout(() => this.enabled && this._boom(55, 1.4, 0.5), 90);  // the rumble
+  },
+  playAsteroid() {
+    if (!this.enabled) return;
+    this.init(); this.resume();
+    if (!this.ctx) return;
+    this._sweep(160, 900, 1.1, 'sawtooth', 0.18);      // rising entry whistle
+    this._noise(1.0, 0.16, 'bandpass', 1200);
+  },
+  playQuake() {
+    if (!this.enabled) return;
+    this.init(); this.resume();
+    if (!this.ctx) return;
+    this._noise(1.5, 0.5, 'lowpass', 160);
+    this._sweep(48, 30, 1.5, 'sine', 0.45);
+  },
+  playWindGust() {
+    if (!this.enabled) return;
+    this.init(); this.resume();
+    if (!this.ctx) return;
+    this._noise(1.2, 0.3, 'bandpass', 700);
+    this._sweep(300, 620, 0.9, 'sine', 0.07);
+  },
+  playSupply() {
+    if (!this.enabled) return;
+    this.init(); this.resume();
+    if (!this.ctx) return;
+    // little three-note chirp
+    [880, 1175, 1568].forEach((f, i) => {
+      setTimeout(() => this.enabled && this._sweep(f, f, 0.1, 'square', 0.14), i * 90);
+    });
   },
 };
 
@@ -812,6 +880,24 @@ const AI_LEVELS = [
   { name:'General', angleVar: 2, powerVar: 1, weaponPref:[4,3,2,6,1,5,0], buyPref:[4,3,2,1,6] },
 ];
 
+// ─── Random events ────────────────────────────────────────────────────────────
+// Every turn change rolls once: most of the time nothing happens ("none"),
+// otherwise one event is drawn by weight and plays out before the player fires.
+const EVENT_CHANCE = { off: 0, rare: 0.10, occasional: 0.20, chaos: 0.40 };
+
+const EVENT_WEAPONS = {
+  lightning: { name:'Lightning', radius:26, damage:60, color:'#ffd', trail:'#ff0' },
+  asteroid:  { name:'Asteroid',  radius:58, damage:80, color:'#fc6', trail:'#f60' },
+};
+
+const RANDOM_EVENTS = [
+  { id:'lightning', weight:28, title:'⚡ LIGHTNING STRIKE', run: () => runLightning() },
+  { id:'asteroid',  weight:24, title:'☄ ASTEROID IMPACT',  run: () => runAsteroid()  },
+  { id:'quake',     weight:20, title:'🌎 EARTHQUAKE',       run: () => runEarthquake()},
+  { id:'storm',     weight:16, title:'🌪 WIND STORM',        run: () => runWindStorm() },
+  { id:'supply',    weight:12, title:'📦 SUPPLY DROP',       run: () => runSupplyDrop()},
+];
+
 // ─── Setup config ─────────────────────────────────────────────────────────────
 let setupConfig = {
   numPlayers: 4,
@@ -830,6 +916,7 @@ let setupConfig = {
   matches: 5,
   planet: 2,        // default Earth
   gravityMode: 'fixed', // 'fixed' | 'random'
+  events: 'occasional', // key of EVENT_CHANCE
 };
 
 // ─── Game state ───────────────────────────────────────────────────────────────
@@ -848,6 +935,16 @@ let gameRunning = false;
 let animating = false;
 let matchNum = 1;
 let matchesTotal = 5;
+// Random-event state
+let eventsChance = 0;     // per-turn probability, 0 = feature off
+let eventActive = false;  // an event is playing; the turn resumes when it ends
+let eventHold = 0;        // ticks the turn stays blocked for an event's show
+let bolts = [];           // lightning polylines
+let drops = [];           // falling supply crates
+let gusts = [];           // wind-storm streaks
+let quakeTicks = 0, quakeMax = 1, quakeAmp = 0;
+let flashAlpha = 0;       // white lightning flash over the whole field
+let eventBannerTimer = null;
 let speedLevel = 0; // 0 = normal, 1 = fast, 2 = fastest, 3 = ultra, 4 = instant
 const SPEED_LABELS  = ['⚡ FAST', '⚡⚡ FASTEST', '⚡⚡⚡ ULTRA', '⏩ INSTANT', '▷ NORMAL'];
 const SPEED_STEPS   = [20, 80, 400, 100000];
@@ -893,6 +990,7 @@ function showSetupScreen() {
   document.getElementById('message').style.display = 'none';
   document.getElementById('winner-screen').style.display = 'none';
   gameRunning = false;
+  clearEventFx();
 
   const container = document.getElementById('player-rows');
   container.innerHTML = '';
@@ -926,6 +1024,7 @@ function showSetupScreen() {
   onNumPlayersChange();
   document.getElementById('matches-sel').value = setupConfig.matches;
   document.getElementById('gravity-mode-sel').value = setupConfig.gravityMode;
+  document.getElementById('events-sel').value = setupConfig.events;
   document.getElementById('planet-sel').value = setupConfig.planet;
   document.getElementById('planet-row').style.display = setupConfig.gravityMode === 'fixed' ? '' : 'none';
   document.getElementById('setup-screen').style.display = 'flex';
@@ -943,6 +1042,7 @@ function beginGame() {
   }));
   setupConfig.matches = +document.getElementById('matches-sel').value;
   setupConfig.gravityMode = document.getElementById('gravity-mode-sel').value;
+  setupConfig.events = document.getElementById('events-sel').value;
   setupConfig.planet = +document.getElementById('planet-sel').value;
   document.getElementById('setup-screen').style.display = 'none';
   MusicManager.play('game');
@@ -1238,20 +1338,42 @@ function drawProjectiles() {
       ctx.stroke();
       ctx.globalAlpha = 1;
     }
+    ctx.save();
+    if (p.glow) { ctx.shadowColor = p.color || '#ff0'; ctx.shadowBlur = 16; }
     ctx.fillStyle = p.color || '#ff0';
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+    ctx.arc(p.x, p.y, p.size || 3, 0, Math.PI*2);
     ctx.fill();
+    ctx.restore();
   }
 }
 
 function render() {
   ctx.clearRect(0, 0, W, H);
   drawSky();
+  // The earthquake rattles the ground and everything standing on it; the sky
+  // stays put so no bare edges creep in.
+  ctx.save();
+  if (quakeTicks > 0) {
+    const amp = quakeAmp * (quakeTicks / quakeMax);
+    // Zoom a hair so the shake offset never uncovers the edges of the field
+    const s = 1 + (quakeAmp * 2.2) / Math.max(1, Math.min(W, H));
+    ctx.translate(W / 2, H / 2); ctx.scale(s, s); ctx.translate(-W / 2, -H / 2);
+    ctx.translate((Math.random()*2 - 1) * amp, (Math.random()*2 - 1) * amp);
+  }
   drawTerrain();
   drawExplosions();
   for (const p of players) drawTank(p);
   drawProjectiles();
+  drawEventFx();
+  ctx.restore();
+  if (flashAlpha > 0) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(0.75, flashAlpha);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
 }
 
 // ─── Physics ──────────────────────────────────────────────────────────────────
@@ -1369,6 +1491,8 @@ function explodeAt(cx, cy, wep, ownerId) {
   }
 
   if (!wep.dirt) {
+    // Random events fire with ownerId -1 — nobody banks cash or score for those
+    const owner = players[ownerId];
     for (const p of players) {
       if (!p.alive) continue;
       const dist = Math.hypot(p.x - cx, p.y - cy);
@@ -1377,17 +1501,17 @@ function explodeAt(cx, cy, wep, ownerId) {
         if (dmg > 0) {
           // One-hit kill: any direct hit is lethal
           p.hp = 0;
-          if (p.id !== ownerId) {
-            players[ownerId].cash += wep.damage * 3;
-            players[ownerId].score += wep.damage;
+          if (owner && p.id !== ownerId) {
+            owner.cash += wep.damage * 3;
+            owner.score += wep.damage;
           }
           if (p.alive) {
             p.alive = false;
             explosions.push({ x:p.x, y:p.y, radius:40, color:'#f00', life:80, maxLife:80, phase:0 });
             SoundManager.playTankDeath();
-            if (p.id !== ownerId) {
-              players[ownerId].cash += 500;
-              players[ownerId].score += 200;
+            if (owner && p.id !== ownerId) {
+              owner.cash += 500;
+              owner.score += 200;
             }
           }
         }
@@ -1455,6 +1579,251 @@ function aiAutoBuy(p) {
   }
 }
 
+// ─── Random events ────────────────────────────────────────────────────────────
+// Rolled once per turn change. Returns true when an event took over the turn —
+// play resumes from beginPlayerTurn() once the physics settles again.
+function rollTurnEvent() {
+  if (!gameRunning || eventsChance <= 0) return false;
+  if (Math.random() >= eventsChance) return false;   // "none" — the usual case
+
+  // Draw by weight; an event that cannot run right now (e.g. a wind storm on an
+  // airless moon) steps aside for another instead of wasting the roll.
+  const pool = RANDOM_EVENTS.slice();
+  while (pool.length) {
+    const total = pool.reduce((s, e) => s + e.weight, 0);
+    let r = Math.random() * total, idx = 0;
+    while (idx < pool.length - 1 && r >= pool[idx].weight) { r -= pool[idx].weight; idx++; }
+    const ev = pool[idx];
+    const detail = ev.run();
+    if (detail !== null) {
+      eventActive = true;
+      animating = true;
+      document.getElementById('fire-btn').disabled = true;
+      showEventBanner(ev.title, detail);
+      return true;
+    }
+    pool.splice(idx, 1);
+  }
+  return false;
+}
+
+function showEventBanner(title, sub) {
+  const el = document.getElementById('event-banner');
+  document.getElementById('event-banner-title').textContent = title;
+  document.getElementById('event-banner-sub').textContent = sub || '';
+  el.style.display = 'block';
+  if (eventBannerTimer) clearTimeout(eventBannerTimer);
+  eventBannerTimer = setTimeout(() => { el.style.display = 'none'; }, 2000);
+}
+
+function hideEventBanner() {
+  if (eventBannerTimer) { clearTimeout(eventBannerTimer); eventBannerTimer = null; }
+  const el = document.getElementById('event-banner');
+  if (el) el.style.display = 'none';
+}
+
+function randomAlivePlayer() {
+  const alive = players.filter(p => p.alive);
+  return alive.length ? alive[Math.floor(Math.random() * alive.length)] : null;
+}
+
+// A bolt out of the sky: often near a tank, sometimes just scorching the dirt.
+function runLightning() {
+  const target = Math.random() < 0.7 ? randomAlivePlayer() : null;
+  const x = target
+    ? Math.max(4, Math.min(W - 4, target.x + (Math.random()*2 - 1) * 70))
+    : Math.random() * W;
+  const y = getTerrainY(x);
+
+  const pts = [];
+  let bx = x + (Math.random()*2 - 1) * 45;
+  const stepY = Math.max(10, y / 14);
+  for (let py = 0; py < y; py += stepY) {
+    pts.push({ x: Math.max(0, Math.min(W, bx)), y: py });
+    bx += (Math.random()*2 - 1) * 20;
+  }
+  pts.push({ x, y });
+  bolts.push({ pts, life: 20, maxLife: 20 });
+  flashAlpha = 0.5;
+  eventHold = 28;
+  SoundManager.playThunder();
+  explodeAt(x, y, EVENT_WEAPONS.lightning, -1);
+  return target ? `A bolt cracks down near ${target.name}` : 'A bolt scorches the battlefield';
+}
+
+// A rock drops in from orbit, roughly over somebody's head.
+function runAsteroid() {
+  const target = randomAlivePlayer();
+  const aim = target ? target.x + (Math.random()*2 - 1) * 130 : Math.random() * W;
+  projectiles.push({
+    x: Math.max(0, Math.min(W, aim)), y: -30,
+    vx: (Math.random()*2 - 1) * 30,
+    vy: 150 + Math.random() * 90,
+    weapon: EVENT_WEAPONS.asteroid, ownerId: -1,
+    color: EVENT_WEAPONS.asteroid.color, trailColor: EVENT_WEAPONS.asteroid.trail,
+    trail: [], life: 900, roller: false, rolling: false,
+    size: 7, glow: true,
+  });
+  eventHold = 12;
+  SoundManager.playAsteroid();
+  return 'Something big is coming down';
+}
+
+// The ground settles: peaks slump, hollows fill, anyone left hanging drops.
+function runEarthquake() {
+  if (!terrain.length) return null;
+  const radius = 22 + Math.floor(Math.random() * 22);
+  const amount = 0.35 + Math.random() * 0.25;
+  // Box blur via prefix sums, blended back over the old surface
+  const pre = new Float64Array(W + 1);
+  for (let x = 0; x < W; x++) pre[x + 1] = pre[x] + terrain[x];
+  const settled = new Array(W);
+  for (let x = 0; x < W; x++) {
+    const a = Math.max(0, x - radius), b = Math.min(W, x + radius + 1);
+    settled[x] = (pre[b] - pre[a]) / (b - a);
+  }
+  for (let x = 0; x < W; x++) {
+    terrain[x] = Math.min(H - 2, terrain[x] * (1 - amount) + settled[x] * amount);
+  }
+  quakeMax = quakeTicks = 55;
+  quakeAmp = 6 + Math.random() * 4;
+  eventHold = 55;
+  SoundManager.playQuake();
+  return 'The ground slumps under everyone';
+}
+
+// The wind swings hard — every shot this round has to account for it.
+function runWindStorm() {
+  const planet = PLANETS[activePlanetIdx];
+  if (!planet || planet.windMult <= 0) return null;   // no air, no storm
+  const dir = Math.random() < 0.5 ? -1 : 1;
+  wind = dir * (45 + Math.random() * 45) * planet.windMult;
+  updateWindHUD();
+  gusts = [];
+  for (let i = 0; i < 34; i++) {
+    gusts.push({
+      x: Math.random() * W, y: Math.random() * H * 0.85,
+      len: 18 + Math.random() * 46,
+      life: 30 + Math.random() * 40, maxLife: 70,
+    });
+  }
+  eventHold = 50;
+  SoundManager.playWindGust();
+  return `Wind swings to ${Math.abs(Math.round(wind))} ${dir > 0 ? '→' : '←'}`;
+}
+
+// Somebody gets lucky: a crate of ammo and cash parachutes in.
+function runSupplyDrop() {
+  const target = randomAlivePlayer();
+  if (!target) return null;
+  // Cheap gear is common, a nuke is a jackpot: weight the draw against cost
+  const paid = WEAPONS.map((w, i) => i).filter(i => WEAPONS[i].cost > 0);
+  if (!paid.length) return null;
+  const total = paid.reduce((s, i) => s + 50 / WEAPONS[i].cost, 0);
+  let r = Math.random() * total, wi = paid[paid.length - 1];
+  for (const i of paid) {
+    r -= 50 / WEAPONS[i].cost;
+    if (r <= 0) { wi = i; break; }
+  }
+  const qty = WEAPONS[wi].cost >= 500 ? 1 : 2;
+  const cash = 100 + Math.floor(Math.random() * 4) * 50;
+  // Drop it from just off the top of the visible area above the tank
+  const startY = Math.max(-24, getTerrainY(target.x) - 340);
+  drops.push({ x: target.x, y: startY, vy: 40, targetId: target.id, wi, qty, cash });
+  eventHold = 18;
+  SoundManager.playSupply();
+  return `${target.name} gets ${qty}× ${WEAPONS[wi].name} and $${cash}`;
+}
+
+function updateDrops(dt) {
+  for (let i = drops.length - 1; i >= 0; i--) {
+    const d = drops[i];
+    d.vy = Math.min(d.vy + gravity * dt * 0.6, 210);  // parachute-limited descent
+    d.y += d.vy * dt;
+    const ty = getTerrainY(d.x);
+    if (d.y >= ty - 6) {
+      const p = players[d.targetId];
+      if (p && p.alive) {
+        p.inventory[d.wi] += d.qty;
+        p.cash += d.cash;
+        if (p.id === currentPlayer) updateWeaponSelect();
+        updateHUD();
+      }
+      explosions.push({ x:d.x, y:ty, radius:16, color:'#0f0', life:24, maxLife:24, phase:0 });
+      drops.splice(i, 1);
+    }
+  }
+}
+
+function updateEventFx(dt) {
+  if (eventHold > 0) eventHold--;
+  if (quakeTicks > 0) quakeTicks--;
+  if (flashAlpha > 0) flashAlpha = Math.max(0, flashAlpha - dt * 2.2);
+  for (let i = bolts.length - 1; i >= 0; i--) {
+    if (--bolts[i].life <= 0) bolts.splice(i, 1);
+  }
+  for (let i = gusts.length - 1; i >= 0; i--) {
+    const g = gusts[i];
+    g.x += wind * dt * 2.2;
+    if (--g.life <= 0 || g.x < -80 || g.x > W + 80) gusts.splice(i, 1);
+  }
+  updateDrops(dt);
+}
+
+function drawEventFx() {
+  for (const b of bolts) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, b.life / 8);
+    ctx.strokeStyle = '#ffd'; ctx.lineWidth = 3;
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.shadowColor = '#ff0'; ctx.shadowBlur = 14;
+    ctx.beginPath();
+    ctx.moveTo(b.pts[0].x, b.pts[0].y);
+    for (const p of b.pts) ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    ctx.restore();
+  }
+  if (gusts.length) {
+    const dir = wind >= 0 ? 1 : -1;
+    ctx.save();
+    ctx.strokeStyle = '#cfe'; ctx.lineWidth = 1;
+    for (const g of gusts) {
+      ctx.globalAlpha = 0.35 * Math.min(1, g.life / 20);
+      ctx.beginPath();
+      ctx.moveTo(g.x, g.y);
+      ctx.lineTo(g.x + g.len * dir, g.y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  for (const d of drops) {
+    const owner = players[d.targetId];
+    ctx.save();
+    // parachute canopy
+    ctx.strokeStyle = owner ? owner.color : '#0f0';
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(d.x, d.y - 15, 15, Math.PI, 0);
+    ctx.fill(); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(d.x - 15, d.y - 15); ctx.lineTo(d.x - 6, d.y - 5);
+    ctx.moveTo(d.x + 15, d.y - 15); ctx.lineTo(d.x + 6, d.y - 5);
+    ctx.stroke();
+    // crate
+    ctx.fillStyle = '#8a5a20'; ctx.fillRect(d.x - 7, d.y - 5, 14, 12);
+    ctx.strokeStyle = '#e0b060'; ctx.strokeRect(d.x - 7, d.y - 5, 14, 12);
+    ctx.restore();
+  }
+}
+
+function clearEventFx() {
+  bolts = []; drops = []; gusts = [];
+  quakeTicks = 0; flashAlpha = 0; eventHold = 0;
+  eventActive = false;
+  hideEventBanner();
+}
+
 // ─── Fire ─────────────────────────────────────────────────────────────────────
 function fire() {
   if (animating || !gameRunning) return;
@@ -1490,6 +1859,8 @@ function fire() {
 let lastTime = 0;
 
 function physicsStep(dt) {
+  updateEventFx(dt);
+
   for (let i = explosions.length-1; i >= 0; i--) {
     const ex = explosions[i];
     ex.life--;
@@ -1587,7 +1958,8 @@ function physicsStep(dt) {
 
   const anyFalling = updateTankPhysics(dt);
 
-  if (projectiles.length === 0 && explosions.length === 0 && !anyFalling && animating) {
+  if (projectiles.length === 0 && explosions.length === 0 && !anyFalling &&
+      drops.length === 0 && eventHold <= 0 && animating) {
     animating = false;
     document.getElementById('fire-btn').disabled = false;
     for (const p of players) {
@@ -1599,8 +1971,15 @@ function physicsStep(dt) {
       }
     }
     updateFastBtn();
+    // An event ran *before* the turn, so hand control to the player it
+    // interrupted rather than advancing the order a second time.
+    const wasEvent = eventActive;
+    eventActive = false;
     checkWin();
-    if (gameRunning) nextTurn();
+    if (gameRunning) {
+      if (wasEvent) beginPlayerTurn();
+      else nextTurn();
+    }
     return true;
   }
   return false;
@@ -1636,9 +2015,29 @@ function nextTurn() {
 
   updateHUD();
   updateWeaponSelect();
-  if (players[currentPlayer].isAI) {
-    document.getElementById('fire-btn').disabled = true;
+  if (rollTurnEvent()) return;   // event plays first, then beginPlayerTurn()
+  beginPlayerTurn();
+}
+
+// Hands the turn to whoever is up now — used both for a plain turn change and
+// after a random event has finished interrupting one.
+function beginPlayerTurn() {
+  if (!gameRunning) return;
+  const p = players[currentPlayer];
+  if (!p) return;
+  if (!p.alive) {
+    // The turn's owner was wiped out by the event that just played
+    if (players.some(q => q.alive)) nextTurn();
+    return;
+  }
+  updateHUD();
+  updateWeaponSelect();
+  const fireBtn = document.getElementById('fire-btn');
+  if (p.isAI) {
+    fireBtn.disabled = true;
     setTimeout(aiTakeTurn, speedLevel > 0 ? 0 : 800 + Math.random()*400);
+  } else {
+    fireBtn.disabled = false;
   }
 }
 
@@ -1906,6 +2305,8 @@ function resizeCanvas() {
 
 function startMatch() {
   resizeCanvas();
+  clearEventFx();
+  eventsChance = EVENT_CHANCE[setupConfig.events] ?? 0;
   // Revive all, reset HP; keep score, cash, and purchased inventory
   players.forEach(p => {
     p.hp = 100;
