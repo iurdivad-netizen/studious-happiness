@@ -234,6 +234,12 @@
         <option value="5" selected>5</option>
         <option value="7">7</option>
         <option value="10">10</option>
+        <option value="15">15</option>
+        <option value="20">20</option>
+        <option value="25">25</option>
+        <option value="30">30</option>
+        <option value="40">40</option>
+        <option value="50">50</option>
       </select>
     </div>
     <div class="matches-row">
@@ -609,13 +615,14 @@ function updateSoundBtns() {
 // ─── Music ────────────────────────────────────────────────────────────────────
 function midi(n) { return 440 * Math.pow(2, (n - 69) / 12); }
 
-const MUSIC_MAX_GAIN = 0.32;   // gain at 100% on the volume bar
+const MUSIC_MAX_GAIN = 0.72;   // gain at 100% on the volume bar
 
 const MusicManager = {
   ctx: null,
   master: null,
   enabled: (() => { try { return localStorage.getItem('musicOn') !== '0'; } catch(e) { return true; } })(),
-  // 0..1 slider position; 0.5 reproduces the original fixed 0.16 gain
+  // 0..1 slider position; the default 0.5 sits at 0.36 gain, well over twice
+  // the 0.16 the music used to be pinned at
   volume: (() => {
     try {
       const v = parseFloat(localStorage.getItem('musicVol'));
