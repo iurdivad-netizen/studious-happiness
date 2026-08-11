@@ -108,9 +108,9 @@
   .winner-tag { font-size: 11px; color: #555; letter-spacing: 3px; }
 
   /* ── Shop screen ────────────────────────────────────────────── */
-  .shop-cash-row { display: flex; gap: 6px; margin-bottom: 14px; }
+  .shop-cash-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
   .shop-pcash {
-    flex: 1; border: 1px solid #222; padding: 6px 4px;
+    flex: 1 1 92px; min-width: 84px; border: 1px solid #222; padding: 6px 4px;
     font-size: 11px; text-align: center; line-height: 1.6;
   }
   .shop-pcash .pcash-val { display: block; color: #ff0; font-size: 14px; font-weight: bold; }
@@ -129,10 +129,23 @@
   .shop-btn:hover:not(:disabled) { background: #060; }
   .shop-btn:disabled { border-color: #222; color: #333; cursor: default; background: #000; }
   .shop-note { color: #444; font-size: 11px; text-align: center; margin-top: 10px; }
+  /* Big line-ups (5+ players): tighten the grid so every column fits on screen
+     instead of hiding behind a horizontal scrollbar. */
+  .shop-wide .shop-tbl { font-size: 11px; }
+  .shop-wide .shop-tbl th, .shop-wide .shop-tbl td { padding: 4px 3px; }
+  .shop-wide .shop-tbl td.wname { font-size: 11px; }
+  .shop-wide .shop-btn { padding: 2px 5px; margin-left: 2px; }
+  .shop-wide .shop-qty { min-width: 18px; }
+  .shop-wide .shop-pcash { font-size: 10px; }
   #fast-btn.fast-active { background: #ff0; color: #000; }
   #fast-btn.fast-active:hover { background: #cc0; }
 
   /* ── Sound toggle ───────────────────────────────────────── */
+  .vol-group { display: flex; align-items: center; gap: 8px; }
+  .vol-slider { width: 96px; }
+  .vol-group .vol-val { color: #ff0; font-size: 12px; min-width: 40px; text-align: right; }
+  .vol-muted .vol-slider { opacity: 0.35; }
+  .vol-muted .vol-val { color: #666; }
   .sound-toggle-btn {
     background: #111; color: #0f0; border: 1px solid #0f0;
     padding: 4px 10px; font-family: inherit; font-size: 12px;
@@ -149,6 +162,7 @@
     #scores-hud { display: none; }
     #controls { gap: 6px 10px; padding: 5px 8px; }
     input[type=range] { width: 150px; height: 8px; }
+    input[type=range].vol-slider { width: 104px; }
     input[type=range]::-webkit-slider-thumb { width: 22px; height: 22px; }
     input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #0f0; border: none; cursor: pointer; }
     #fire-btn { font-size: 15px; padding: 7px 20px; }
@@ -221,6 +235,14 @@
       <label>MUSIC</label>
       <button class="sound-toggle-btn" id="setup-music-btn" onclick="toggleMusic()">🎵 ON</button>
     </div>
+    <div class="matches-row" id="music-vol-row">
+      <label>MUSIC VOLUME</label>
+      <div class="vol-group">
+        <input type="range" class="vol-slider" id="setup-music-vol"
+               min="0" max="100" step="1" value="50" aria-label="Music volume">
+        <span class="vol-val" id="setup-music-vol-val">50%</span>
+      </div>
+    </div>
     <div class="matches-row" id="planet-row">
       <label>BATTLE ARENA</label>
       <select id="planet-sel">
@@ -237,7 +259,7 @@
 
 <!-- Shop Screen -->
 <div id="shop-screen" class="overlay" style="display:none">
-  <div class="overlay-inner">
+  <div class="overlay-inner" id="shop-inner">
     <h2 class="overlay-title" id="shop-title">MATCH 1 COMPLETE</h2>
     <p class="overlay-sub" id="shop-sub"></p>
     <p class="section-label">STANDINGS</p>
@@ -305,6 +327,12 @@
     <button id="fast-btn" onclick="toggleFastMode()" title="Cycle animation/thinking speed">⚡ FAST</button>
     <button class="sound-toggle-btn" id="game-sound-btn" onclick="toggleSound()" title="Toggle sound effects">🔊 ON</button>
     <button class="sound-toggle-btn" id="game-music-btn" onclick="toggleMusic()" title="Toggle music">🎵 ON</button>
+    <div class="ctrl-group vol-group" id="music-vol-ctrl">
+      <label>MUSIC VOL</label>
+      <input type="range" class="vol-slider" id="game-music-vol"
+             min="0" max="100" step="1" value="50" title="Music volume" aria-label="Music volume">
+      <span class="vol-val" id="game-music-vol-val">50%</span>
+    </div>
     <span style="font-size:11px;color:#555">← → angle &nbsp;|&nbsp; [ ] power &nbsp;|&nbsp; SPACE fire</span>
   </div>
 </div>
@@ -326,6 +354,16 @@ const BASE_GRAVITY = 120;
 let gravity = BASE_GRAVITY;
 const FPS = 60;
 const FALL_DEATH_HEIGHT = 150; // px of free-fall before a tank is destroyed
+
+// ─── Roller tuning ────────────────────────────────────────────────────────────
+const ROLL_FRICTION   = 0.985; // speed kept per 1/60s while rolling
+const ROLL_MAX_SPEED  = 420;   // px/s cap so steep runs stay watchable
+const ROLL_LAND_KEEP  = 0.6;   // fraction of along-slope speed kept on impact
+const ROLL_STOP_SPEED = 8;     // px/s below which it settles (on level ground)
+const ROLL_STOP_SLOPE = 0.12;  // gradient still counted as "level"
+const ROLL_LEDGE_DROP = 8;     // px step up/down that ends the surface hug
+const ROLL_WALL_BOUNCE = 0.4;  // speed kept when it slams into a climbable-no wall
+const ROLL_MAX_TICKS  = 300;   // ~5s ceiling on a single roll before it detonates
 
 // ─── Sound ────────────────────────────────────────────────────────────────────
 const SoundManager = {
@@ -503,10 +541,19 @@ function updateSoundBtns() {
 // ─── Music ────────────────────────────────────────────────────────────────────
 function midi(n) { return 440 * Math.pow(2, (n - 69) / 12); }
 
+const MUSIC_MAX_GAIN = 0.32;   // gain at 100% on the volume bar
+
 const MusicManager = {
   ctx: null,
   master: null,
   enabled: (() => { try { return localStorage.getItem('musicOn') !== '0'; } catch(e) { return true; } })(),
+  // 0..1 slider position; 0.5 reproduces the original fixed 0.16 gain
+  volume: (() => {
+    try {
+      const v = parseFloat(localStorage.getItem('musicVol'));
+      return isNaN(v) ? 0.5 : Math.max(0, Math.min(1, v));
+    } catch(e) { return 0.5; }
+  })(),
   mode: null,        // 'menu' | 'game' | null
   schedTimer: null,
   nextTime: 0,
@@ -517,10 +564,23 @@ const MusicManager = {
     this.ctx = SoundManager.ctx;
     if (!this.master) {
       this.master = this.ctx.createGain();
-      this.master.gain.value = 0.16;
+      this.master.gain.value = MUSIC_MAX_GAIN * this.volume;
       this.master.connect(this.ctx.destination);
     }
     return true;
+  },
+  setVolume(v) {
+    this.volume = Math.max(0, Math.min(1, v));
+    try { localStorage.setItem('musicVol', String(this.volume)); } catch(e) {}
+    if (!this.master) return;
+    const g = MUSIC_MAX_GAIN * this.volume;
+    // Ramp instead of jumping so dragging the bar doesn't click. A suspended
+    // context's clock is frozen, so set it outright there instead.
+    if (this.ctx && this.ctx.state === 'running') {
+      this.master.gain.setTargetAtTime(g, this.ctx.currentTime, 0.02);
+    } else {
+      this.master.gain.value = g;
+    }
   },
   setEnabled(on) {
     this.enabled = on;
@@ -684,6 +744,32 @@ function updateMusicBtns() {
     if (!btn) continue;
     btn.textContent = txt;
     btn.classList.toggle('sfx-off', !MusicManager.enabled);
+  }
+  updateMusicVolUI();
+}
+
+function onMusicVolumeInput(v) {
+  MusicManager.setVolume(+v / 100);
+  updateMusicVolUI();
+  // Music may have been left un-started (e.g. context armed later) — pick it up
+  if (MusicManager.enabled && MusicManager.mode && !MusicManager.schedTimer) {
+    MusicManager._startTimer();
+  }
+}
+
+function updateMusicVolUI() {
+  const pct = Math.round(MusicManager.volume * 100);
+  const pairs = [['setup-music-vol', 'setup-music-vol-val'], ['game-music-vol', 'game-music-vol-val']];
+  for (const [sliderId, valId] of pairs) {
+    const slider = document.getElementById(sliderId);
+    if (slider && +slider.value !== pct) slider.value = pct;
+    const lbl = document.getElementById(valId);
+    if (lbl) lbl.textContent = pct + '%';
+  }
+  const silent = !MusicManager.enabled || MusicManager.volume === 0;
+  for (const id of ['music-vol-row', 'music-vol-ctrl']) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('vol-muted', silent);
   }
 }
 
@@ -1174,6 +1260,13 @@ function getTerrainY(x) {
   return (xi < 0 || xi >= W) ? H : terrain[xi];
 }
 
+// Local surface gradient (dy/dx, positive = downhill to the right on screen)
+function terrainSlope(x) {
+  const s = 3;
+  const xc = Math.max(s, Math.min(W - 1 - s, x));
+  return (getTerrainY(xc + s) - getTerrainY(xc - s)) / (2 * s);
+}
+
 // Returns the first alive tank whose body contains (px, py), or null.
 // Tank body box covers the rectangular hull plus the small turret dome on top.
 function tankAt(px, py, excludeId) {
@@ -1388,7 +1481,7 @@ function fire() {
       vy: vy0 + (n > 1 ? Math.random()*(-30) : 0),
       weapon: wep, ownerId: p.id,
       color: wep.color, trailColor: wep.trail,
-      trail: [], life: 600, roller: !!wep.roller,
+      trail: [], life: 600, roller: !!wep.roller, rolling: false,
     });
   }
 }
@@ -1410,11 +1503,37 @@ function physicsStep(dt) {
       proj.trail.push({ x:proj.x, y:proj.y });
       if (proj.trail.length > 18) proj.trail.shift();
     }
-    proj.vx += wind * dt * 0.5;
-    if (!proj.roller) proj.vy += gravity * dt;
     const oldX = proj.x, oldY = proj.y;
-    proj.x += proj.vx * dt;
-    proj.y += proj.vy * dt;
+    if (proj.rolling) {
+      // Hugging the ground: gravity drags it down the slope, friction slows it.
+      // Wind has no say once it is on the dirt.
+      const slope = terrainSlope(proj.x);
+      proj.vx += gravity * (slope / (1 + slope * slope)) * dt;
+      proj.vx *= Math.pow(ROLL_FRICTION, dt * FPS);
+      proj.vx = Math.max(-ROLL_MAX_SPEED, Math.min(ROLL_MAX_SPEED, proj.vx));
+      const nx = proj.x + proj.vx * dt;
+      const drop = getTerrainY(nx) - getTerrainY(proj.x);
+      const stepLimit = Math.max(ROLL_LEDGE_DROP, Math.abs(nx - proj.x) * 2);
+      if (drop > stepLimit) {
+        // Ran off a ledge — back into free fall until it meets ground again
+        proj.rolling = false;
+        proj.vy = gravity * dt;
+        proj.x = nx;
+        proj.y += proj.vy * dt;
+      } else if (-drop > stepLimit) {
+        // Wall too steep to climb — rebound and head back down the way it came
+        proj.vx = -proj.vx * ROLL_WALL_BOUNCE;
+      } else {
+        proj.x = nx;
+        proj.y = getTerrainY(nx);
+        proj.vy = (proj.y - oldY) / dt;   // descent rate, for reference only
+      }
+    } else {
+      proj.vx += wind * dt * 0.5;
+      proj.vy += gravity * dt;             // every shot, rollers included, arcs
+      proj.x += proj.vx * dt;
+      proj.y += proj.vy * dt;
+    }
     proj.life--;
     const ty = getTerrainY(proj.x);
 
@@ -1436,12 +1555,29 @@ function physicsStep(dt) {
     }
 
     if (proj.roller) {
-      if (proj.y >= ty) {
-        proj.y = ty; proj.vy = 0; proj.vx *= 0.98;
-        if (Math.abs(proj.vx) < 5) { explodeAt(proj.x, proj.y, proj.weapon, proj.ownerId); projectiles.splice(i,1); continue; }
+      if (!proj.rolling && proj.y >= ty) {
+        // Touchdown: keep only the component of the impact velocity that runs
+        // along the slope, so a shot landing on a hillside carries on downhill.
+        const slope = terrainSlope(proj.x);
+        const along = (proj.vx + proj.vy * slope) / (1 + slope * slope);
+        proj.vx = Math.max(-ROLL_MAX_SPEED, Math.min(ROLL_MAX_SPEED, along * ROLL_LAND_KEEP));
+        proj.y = ty;
+        proj.vy = 0;
+        proj.rolling = true;
+        proj.life = Math.min(proj.life, ROLL_MAX_TICKS);
+      }
+      if (proj.rolling &&
+          Math.abs(proj.vx) < ROLL_STOP_SPEED &&
+          Math.abs(terrainSlope(proj.x)) < ROLL_STOP_SLOPE) {
+        // Came to rest on level ground
+        explodeAt(proj.x, proj.y, proj.weapon, proj.ownerId);
+        projectiles.splice(i,1); continue;
       }
     }
-    if (proj.life <= 0) { projectiles.splice(i, 1); continue; }
+    if (proj.life <= 0) {
+      if (proj.roller) explodeAt(proj.x, Math.min(proj.y, ty), proj.weapon, proj.ownerId);
+      projectiles.splice(i, 1); continue;
+    }
     if (proj.x < 0 || proj.x > W || proj.y > H) {
       explodeAt(proj.x, Math.min(proj.y, ty), proj.weapon, proj.ownerId);
       projectiles.splice(i, 1); continue;
@@ -1558,6 +1694,13 @@ function showShop(matchWinner, stalemate) {
   document.getElementById('shop-next-lbl').textContent = matchNum + 1;
   document.getElementById('shop-standings').innerHTML = buildStandingsHTML(matchWinner ? matchWinner.id : null);
 
+  // Grow the panel with the line-up: the shop table gains a column per player,
+  // so beyond 4 players the default 560px panel would need a horizontal scrollbar.
+  const inner = document.getElementById('shop-inner');
+  const wide = players.length > 4;
+  inner.classList.toggle('shop-wide', wide);
+  inner.style.width = wide ? (240 + players.length * 92) + 'px' : '';
+
   // AI players auto-buy immediately
   players.filter(p => p.isAI).forEach(aiAutoBuy);
 
@@ -1578,9 +1721,10 @@ function showShop(matchWinner, stalemate) {
 
   // Weapons table (paid weapons only)
   const tbl = document.getElementById('shop-tbl');
+  const hdrLen = wide ? 10 : 7;   // the widened panel has room for longer names
   tbl.innerHTML = `<thead><tr>
     <th class="wh">WEAPON</th><th>COST</th>
-    ${players.map((p,i)=>`<th style="color:${p.color}" id="shdr-${i}">${p.name.substring(0,7)}</th>`).join('')}
+    ${players.map((p,i)=>`<th style="color:${p.color}" id="shdr-${i}">${p.name.substring(0,hdrLen)}</th>`).join('')}
   </tr></thead>`;
   const tbody = document.createElement('tbody');
   WEAPONS.forEach((w, wi) => {
@@ -1728,7 +1872,13 @@ document.getElementById('weapon-select').addEventListener('change', e => {
   if (!gameRunning || animating) return;
   players[currentPlayer].weapon = +e.target.value;
 });
+for (const id of ['setup-music-vol', 'game-music-vol']) {
+  const slider = document.getElementById(id);
+  if (slider) slider.addEventListener('input', e => onMusicVolumeInput(e.target.value));
+}
 document.addEventListener('keydown', e => {
+  // Don't steer the tank while the player is nudging the volume bar
+  if (e.target && e.target.classList && e.target.classList.contains('vol-slider')) return;
   if (!gameRunning || animating || players[currentPlayer].isAI) return;
   const p = players[currentPlayer];
   if      (e.key==='ArrowLeft'||e.key==='a')  { p.angle = Math.max(0, p.angle-2); syncSliders(); }
