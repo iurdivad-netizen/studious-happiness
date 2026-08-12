@@ -400,6 +400,13 @@ const ROLL_LEDGE_DROP = 8;     // px step up/down that ends the surface hug
 const ROLL_WALL_BOUNCE = 0.4;  // speed kept when it slams into a climbable-no wall
 const ROLL_MAX_TICKS  = 300;   // ~5s ceiling on a single roll before it detonates
 
+// ─── Multi-stage weapon tuning ────────────────────────────────────────────────
+const MIRV_MIN_AGE   = 8;    // ticks in flight before an apex split may trigger
+const MIRV_SPREAD    = 38;   // px/s of extra vx per warhead either side of centre
+const FUNKY_BOUNCE   = 0.55; // speed a bomblet keeps when it skips off the dirt
+const LEAP_HOP_H     = 40;   // px of arc height on each leap
+const LEAP_HOP_D     = 100;  // px of ground each leap covers
+
 // ─── Sound ────────────────────────────────────────────────────────────────────
 const SoundManager = {
   ctx: null,
@@ -494,7 +501,14 @@ const SoundManager = {
         break;
       case 'MIRV':
         this._sweep(1100, 500, 0.18, 'square', 0.22);
-        setTimeout(() => this.enabled && this._sweep(1300, 600, 0.12, 'square', 0.18), 90);
+        break;
+      case 'Funky Bomb':
+        this._sweep(600, 1000, 0.2, 'triangle', 0.2);
+        this._noise(0.12, 0.1, 'bandpass', 1200);
+        break;
+      case 'Leap Frog':
+        this._sweep(400, 700, 0.16, 'square', 0.22);
+        this._noise(0.12, 0.12, 'highpass', 900);
         break;
       case 'Napalm':
         this._noise(0.4, 0.3, 'highpass', 600);
@@ -539,6 +553,17 @@ const SoundManager = {
       case 'MIRV':
         this._boom(170, 0.32 * scale, 0.4);
         break;
+      case 'Funky Bomb':
+        this._boom(190, 0.3 * scale, 0.4);
+        this._sweep(1400, 500, 0.16, 'square', 0.14);
+        break;
+      case 'Funky Bomblet':
+        // Each bomblet pops a semitone-ish higher so a burst reads as a run
+        this._boom(210 + Math.random() * 260, 0.22 * scale, 0.3);
+        break;
+      case 'Leap Frog':
+        this._boom(150, 0.34 * scale, 0.42);
+        break;
       case 'Roller':
         this._boom(140, 0.4 * scale, 0.42);
         break;
@@ -555,6 +580,21 @@ const SoundManager = {
     if (!this.ctx) return;
     this._boom(60, 1.0, 0.6);
     this._noise(0.5, 0.3, 'highpass', 400);
+  },
+  // A MIRV cracking open at the top of its arc
+  playSplit() {
+    if (!this.enabled) return;
+    this.init(); this.resume();
+    if (!this.ctx) return;
+    this._noise(0.12, 0.16, 'highpass', 2200);
+    this._sweep(1600, 900, 0.14, 'square', 0.16);
+  },
+  // One Leap Frog hop taking off again
+  playLeap() {
+    if (!this.enabled) return;
+    this.init(); this.resume();
+    if (!this.ctx) return;
+    this._sweep(300, 780, 0.16, 'triangle', 0.2);
   },
   // ── Random event cues ──────────────────────────────────────────────
   playThunder() {
@@ -852,12 +892,25 @@ function updateMusicVolUI() {
 const WEAPONS = [
   { name:'Baby Missile', cost:0,   radius:14,  damage:25,  projectiles:1, spread:0,   color:'#ff0', trail:'#fa0' },
   { name:'Missile',      cost:100, radius:38,  damage:40,  projectiles:1, spread:0,   color:'#f80', trail:'#f40' },
-  { name:'MIRV',         cost:150, radius:24,  damage:30,  projectiles:5, spread:0.3, color:'#f0f', trail:'#a0a' },
+  // Climbs as one shell, then splits into `warheads` at the top of its arc
+  { name:'MIRV',         cost:150, radius:24,  damage:30,  projectiles:1, spread:0,   color:'#f0f', trail:'#a0a', mirv:true, warheads:5 },
   { name:'Napalm',       cost:200, radius:60,  damage:55,  projectiles:1, spread:0,   color:'#f40', trail:'#f80', napalm:true },
   { name:'Nuke',         cost:500, radius:120, damage:100, projectiles:1, spread:0,   color:'#fff', trail:'#ff0' },
   { name:'Dirt Ball',    cost:50,  radius:44,  damage:0,   projectiles:1, spread:0,   color:'#840', trail:'#640', dirt:true },
   { name:'Roller',       cost:100, radius:26,  damage:35,  projectiles:1, spread:0,   color:'#0ff', trail:'#08f', roller:true },
+  // Bursts on impact into a shower of coloured bomblets that skip off the dirt
+  { name:'Funky Bomb',   cost:250, radius:30,  damage:35,  projectiles:1, spread:0,   color:'#f4f', trail:'#0ff', funky:true, bomblets:7 },
+  // Detonates, then leaps on in its direction of travel — `hops` more blasts
+  { name:'Leap Frog',    cost:150, radius:30,  damage:35,  projectiles:1, spread:0,   color:'#0f8', trail:'#0a5', hops:3 },
 ];
+
+// Weapons are addressed by name so the arsenal can grow without every index
+// list in the file having to be renumbered.
+const WEAPON_IDX = {};
+WEAPONS.forEach((w, i) => { WEAPON_IDX[w.name] = i; });
+const wi = name => WEAPON_IDX[name];
+
+const FUNKY_COLORS = ['#f00','#f80','#ff0','#0f0','#0ff','#08f','#f0f'];
 
 const PLAYER_COLORS = ['#0f0','#f00','#ff0','#f0f','#0ff','#f80','#08f','#f08','#8f0','#80f'];
 const PLAYER_NAMES  = ['Player 1','Player 2','Player 3','Player 4','Player 5','Player 6','Player 7','Player 8','Player 9','Player 10'];
@@ -878,13 +931,21 @@ const PLANETS = [
 
 // ─── AI intelligence levels ───────────────────────────────────────────────────
 // angleVar / powerVar = max ± deviation from perfect aim
-// weaponPref = weapon indices tried in order (first with ammo wins)
-// buyPref    = weapon indices bought greedily in shop (highest priority first)
+// weaponPref = weapons tried in order (first with ammo wins)
+// buyPref    = weapons bought greedily in shop (highest priority first)
 const AI_LEVELS = [
-  { name:'Recruit', angleVar:25, powerVar:20, weaponPref:[0],             buyPref:[]          },
-  { name:'Soldier', angleVar:15, powerVar:10, weaponPref:[6,1,0],         buyPref:[1,6,5]     },
-  { name:'Veteran', angleVar: 6, powerVar: 4, weaponPref:[3,2,6,1,0],     buyPref:[3,2,1,6,5] },
-  { name:'General', angleVar: 2, powerVar: 1, weaponPref:[4,3,2,6,1,5,0], buyPref:[4,3,2,1,6] },
+  { name:'Recruit', angleVar:25, powerVar:20,
+    weaponPref: ['Baby Missile'].map(wi),
+    buyPref:    [].map(wi) },
+  { name:'Soldier', angleVar:15, powerVar:10,
+    weaponPref: ['Leap Frog','Roller','Missile','Baby Missile'].map(wi),
+    buyPref:    ['Leap Frog','Missile','Roller','Dirt Ball'].map(wi) },
+  { name:'Veteran', angleVar: 6, powerVar: 4,
+    weaponPref: ['Funky Bomb','Napalm','MIRV','Leap Frog','Roller','Missile','Baby Missile'].map(wi),
+    buyPref:    ['Funky Bomb','Napalm','MIRV','Leap Frog','Missile','Roller','Dirt Ball'].map(wi) },
+  { name:'General', angleVar: 2, powerVar: 1,
+    weaponPref: ['Nuke','Funky Bomb','Napalm','MIRV','Leap Frog','Roller','Missile','Dirt Ball','Baby Missile'].map(wi),
+    buyPref:    ['Nuke','Funky Bomb','Napalm','MIRV','Leap Frog','Missile','Roller'].map(wi) },
 ];
 
 // ─── Random events ────────────────────────────────────────────────────────────
@@ -972,7 +1033,8 @@ function makePlayer(i, name, isAI, aiLevel) {
     weapon: 0,
     alive: true,
     score: 0,
-    inventory: [99, 0, 0, 0, 0, 0, 0], // only baby missiles at start; buy others in shop
+    // only baby missiles at start; buy others in shop
+    inventory: WEAPONS.map((w, wIdx) => (wIdx === 0 ? 99 : 0)),
     vy: 0,          // vertical falling velocity
     fallStart: null, // y at which this fall began (null = on ground)
     outOfAmmo: false,
@@ -1544,10 +1606,15 @@ function explodeAt(cx, cy, wep, ownerId) {
         vx: Math.cos(a)*spd, vy: -Math.abs(Math.sin(a))*spd*0.5 - 30,
         weapon: {...wep, radius:wep.radius*0.4, damage:wep.damage*0.5, napalm:false},
         ownerId, color:'#f80', trailColor:'#f40', trail:[], life:120,
+        age:0, hopsLeft:0, bouncesLeft:0,
       });
     }
     return;
   }
+
+  // Unlike napalm, the funky bomb's own blast still counts — the bomblets are
+  // scattered on top of it.
+  if (wep.funky) spawnBomblets(cx, cy, wep, ownerId);
 
   if (!wep.dirt) {
     // Random events fire with ownerId -1 — nobody banks cash or score for those
@@ -1577,6 +1644,98 @@ function explodeAt(cx, cy, wep, ownerId) {
       }
     }
   }
+}
+
+// ─── Multi-stage weapons ──────────────────────────────────────────────────────
+// A MIRV reaching the top of its arc cracks open into a fan of warheads. They
+// share the parent's height and forward speed, so the spread widens with however
+// far the shell still has to fall — a high lob scatters, a flat one stays tight.
+function splitMirv(proj) {
+  const wep = proj.weapon;
+  const n = Math.max(2, wep.warheads || 5);
+  // Warheads are ordinary shells: no `mirv` flag, so they cannot split again
+  const head = { ...wep, mirv: false, warheads: 0 };
+  for (let i = 0; i < n; i++) {
+    const off = i - (n - 1) / 2;
+    projectiles.push({
+      x: proj.x, y: proj.y,
+      vx: proj.vx + off * MIRV_SPREAD,
+      vy: proj.vy - 18 + Math.random() * 12,
+      weapon: head, ownerId: proj.ownerId,
+      color: wep.color, trailColor: wep.trail, trail: [],
+      life: proj.life, roller: false, rolling: false,
+      age: 0, hopsLeft: 0, bouncesLeft: 0,
+    });
+  }
+  explosions.push({ x:proj.x, y:proj.y, radius:16, color:wep.color, life:14, maxLife:14, phase:0 });
+  SoundManager.playSplit();
+}
+
+// A funky bomb throws a fan of coloured bomblets across the upper hemisphere.
+// Each one skips off the dirt once before going off, which is what spreads the
+// blasts over a whole hillside instead of a single crater.
+function spawnBomblets(cx, cy, wep, ownerId) {
+  const n = Math.max(2, wep.bomblets || 7);
+  const sub = {
+    ...wep,
+    name: 'Funky Bomblet',
+    radius: wep.radius * 0.72,
+    damage: Math.round(wep.damage * 0.7),
+    funky: false, bomblets: 0,
+  };
+  for (let i = 0; i < n; i++) {
+    // Even fan from ~18° to ~162°, jittered so no two bursts look alike
+    const a = Math.PI * (0.1 + 0.8 * (i + 0.5 + (Math.random() - 0.5) * 0.7) / n);
+    const spd = 120 + Math.random() * 120;
+    const col = FUNKY_COLORS[i % FUNKY_COLORS.length];
+    projectiles.push({
+      x: cx, y: cy - 4,
+      vx: Math.cos(a) * spd, vy: -Math.sin(a) * spd,
+      weapon: sub, ownerId,
+      color: col, trailColor: col, trail: [],
+      life: 400, roller: false, rolling: false,
+      size: 4, glow: true,
+      age: 0, hopsLeft: 0, bouncesLeft: 1,
+    });
+  }
+}
+
+// Skip a projectile off the ground: reflect its velocity about the surface
+// normal and keep `keep` of the speed.
+function bounceOffTerrain(proj, keep) {
+  const slope = terrainSlope(proj.x);
+  const len = Math.hypot(slope, 1);
+  const nx = slope / len, ny = -1 / len;         // surface normal, pointing skyward
+  const dot = proj.vx * nx + proj.vy * ny;
+  proj.vx = (proj.vx - 2 * dot * nx) * keep;
+  proj.vy = (proj.vy - 2 * dot * ny) * keep;
+  if (proj.vy > 0) proj.vy = -Math.abs(proj.vy); // a bounce always leaves the ground
+  proj.y = getTerrainY(proj.x) - 1;              // clear the surface so it can fly
+}
+
+// Detonates a projectile where it struck. A Leap Frog with hops to spare takes
+// off again from the blast instead of being spent; returns true once the
+// projectile is finished and the caller should remove it.
+function resolveImpact(proj, ix, iy) {
+  explodeAt(ix, iy, proj.weapon, proj.ownerId);
+  if (!(proj.hopsLeft > 0)) return true;
+  proj.hopsLeft--;
+  const dir = proj.vx >= 0 ? 1 : -1;
+  proj.x = ix;
+  proj.y = Math.min(iy, getTerrainY(ix) - 2);   // the fresh crater is below us
+  // The leap is set by its arc, not by the speed it came in at: every hop clears
+  // the same height and covers the same ground however hard the shot was fired,
+  // which is what makes walking one onto a target predictable. Gravity still
+  // decides how long that arc takes, so it stays a lob on Titan and a snap on
+  // Jupiter.
+  const rise = Math.sqrt(2 * gravity * LEAP_HOP_H);
+  const airTime = 2 * rise / gravity;
+  proj.vy = -rise;
+  proj.vx = dir * LEAP_HOP_D / airTime;
+  proj.life = Math.max(proj.life, Math.ceil(airTime * FPS) + 60);
+  if (proj.trail) proj.trail.length = 0;
+  SoundManager.playLeap();
+  return false;
 }
 
 // ─── AI ───────────────────────────────────────────────────────────────────────
@@ -1722,6 +1881,7 @@ function runAsteroid() {
     color: EVENT_WEAPONS.asteroid.color, trailColor: EVENT_WEAPONS.asteroid.trail,
     trail: [], life: 900, roller: false, rolling: false,
     size: 7, glow: true,
+    age: 0, hopsLeft: 0, bouncesLeft: 0,
   });
   eventHold = 12;
   SoundManager.playAsteroid();
@@ -1942,6 +2102,10 @@ function fire() {
       weapon: wep, ownerId: p.id,
       color: wep.color, trailColor: wep.trail,
       trail: [], life: 600, roller: !!wep.roller, rolling: false,
+      age: 0,
+      mirv: !!wep.mirv,
+      hopsLeft: wep.hops || 0,
+      bouncesLeft: wep.bounces || 0,
     });
   }
 }
@@ -1998,6 +2162,7 @@ function physicsStep(dt) {
       proj.y += proj.vy * dt;
     }
     proj.life--;
+    proj.age++;
     const ty = getTerrainY(proj.x);
 
     // Tank collision — projectiles explode on direct contact with a tank.
@@ -2012,7 +2177,14 @@ function physicsStep(dt) {
       if (tankAt(sx, sy, proj.ownerId)) { hitX = sx; hitY = sy; break; }
     }
     if (hitX !== null) {
-      explodeAt(hitX, hitY, proj.weapon, proj.ownerId);
+      if (resolveImpact(proj, hitX, hitY)) projectiles.splice(i, 1);
+      continue;
+    }
+
+    // MIRV: crack open at the top of the arc. A shell lobbed downhill never has
+    // an apex, so the age floor lets it clear the barrel and then split anyway.
+    if (proj.mirv && proj.vy >= 0 && proj.age >= MIRV_MIN_AGE) {
+      splitMirv(proj);
       projectiles.splice(i, 1);
       continue;
     }
@@ -2045,7 +2217,16 @@ function physicsStep(dt) {
       explodeAt(proj.x, Math.min(proj.y, ty), proj.weapon, proj.ownerId);
       projectiles.splice(i, 1); continue;
     }
-    if (!proj.roller && proj.y >= ty) { explodeAt(proj.x, ty, proj.weapon, proj.ownerId); projectiles.splice(i,1); continue; }
+    if (!proj.roller && proj.y >= ty) {
+      // Funky bomblets skip off the dirt before they go off
+      if (proj.bouncesLeft > 0) {
+        proj.bouncesLeft--;
+        bounceOffTerrain(proj, FUNKY_BOUNCE);
+        continue;
+      }
+      if (resolveImpact(proj, proj.x, ty)) projectiles.splice(i, 1);
+      continue;
+    }
   }
 
   const anyFalling = updateTankPhysics(dt);
