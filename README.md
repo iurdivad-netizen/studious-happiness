@@ -1,6 +1,6 @@
-# Scorched Earth
+# Craterfall
 
-A browser take on the classic artillery game. Two to ten tanks sit on procedurally generated terrain and take turns lobbing shells at each other. Pick an angle and power, account for gravity and wind, and fire. Craters reshape the ground, and one direct hit is lethal.
+Craterfall is a fan-made tribute to the classic DOS artillery game *Scorched Earth* (Wendell Hicken, 1991), rebuilt from scratch for the browser. It is an independent look-alike: it contains no code or assets from the original, and it is not affiliated with or endorsed by the original author or publisher. Two to ten tanks sit on procedurally generated terrain and take turns lobbing shells at each other. Pick an angle and power, account for gravity and wind, and fire. Craters reshape the ground, and one direct hit is lethal.
 
 The whole game is a single self-contained file, [`index.html`](index.html). It has no build step, no dependencies and no network access. Sound and music are synthesised in the browser with the Web Audio API.
 
