@@ -105,6 +105,52 @@
     padding: 3px 6px; font-family: inherit; font-size: 11px; margin-left: 6px;
   }
 
+  /* ── Start screen ───────────────────────────────────────────── */
+  .setup-inner { width: 660px; padding-bottom: 0; }
+  .title-canvas { display: block; width: 100%; height: 124px; border: 1px solid #1c3a1c; border-radius: 6px; margin-bottom: 14px; background: #02060a; }
+  .big-title { font-size: 34px; letter-spacing: 7px; background: linear-gradient(#fff36a, #ff9a1f);
+    -webkit-background-clip: text; background-clip: text; color: transparent; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 12px rgba(255,160,30,0.45)); }
+  .audio-tray { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin: -4px 0 14px; }
+  .setup-card { border: 1px solid #1c2a1c; background: rgba(0,24,0,0.35); border-radius: 6px; padding: 12px 14px 14px; margin-bottom: 12px; }
+  .setup-card .section-label { border-bottom-color: #1c2a1c; }
+  .seg { display: flex; flex-wrap: wrap; gap: 6px; }
+  .seg-btn, .preset-btn {
+    background: #0b140b; color: #7c7; border: 1px solid #284828; padding: 6px 12px;
+    font-size: 12px; letter-spacing: 1px; border-radius: 4px; min-width: 38px;
+  }
+  .seg-btn:hover, .preset-btn:hover { background: #0f2a0f; color: #0f0; }
+  .seg-btn.on { background: #0f0; color: #000; border-color: #0f0; box-shadow: 0 0 10px rgba(0,255,0,0.45); }
+  .seg-hint { color: #666; font-size: 11px; margin-top: 8px; min-height: 14px; }
+  .preset-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .preset-btn { flex: 1 1 130px; padding: 9px 10px; text-align: center; line-height: 1.5; }
+  .preset-btn small { display: block; color: #587; font-weight: normal; letter-spacing: 0; }
+  .planet-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .planet-card {
+    background: #0b140b; color: #9c9; border: 1px solid #284828; border-radius: 6px;
+    padding: 9px 8px; text-align: center; line-height: 1.45; font-weight: normal;
+  }
+  .planet-card .pc-ico { display: block; font-size: 24px; }
+  .planet-card .pc-name { display: block; color: #cfc; font-weight: bold; letter-spacing: 1px; font-size: 12px; }
+  .planet-card .pc-meta { display: block; font-size: 10px; color: #6a8; }
+  .planet-card:hover { background: #0f2a0f; }
+  .planet-card.on { border-color: #0f0; background: #0c2c0c; box-shadow: 0 0 12px rgba(0,255,0,0.4); }
+  .planet-card.on .pc-name { color: #0f0; }
+  .start-bar {
+    position: sticky; bottom: 0; margin: 0 -32px; padding: 12px 32px 18px;
+    background: #020802; border-top: 1px solid #14301a; z-index: 5;
+  }
+  /* soft fade where content scrolls under the bar */
+  .start-bar::before { content: ''; position: absolute; left: 0; right: 0; top: -22px; height: 22px;
+    background: linear-gradient(rgba(2,8,2,0), #020802); pointer-events: none; }
+  #player-rows { margin-top: 12px; }
+  .setup-summary { color: #8a8; font-size: 12px; text-align: center; letter-spacing: 1px; margin-bottom: 8px; }
+  .setup-summary b { color: #ff0; font-weight: normal; }
+  .start-btn { margin-top: 0; font-size: 17px; padding: 13px; letter-spacing: 4px;
+    background: linear-gradient(#35ff35, #00b300); box-shadow: 0 0 18px rgba(0,255,0,0.35); }
+  .start-btn:hover { background: linear-gradient(#5aff5a, #00cc00); box-shadow: 0 0 26px rgba(0,255,0,0.6); }
+  .player-row .p-name-input { flex: 0 1 150px; min-width: 0; }
+
   /* ── Standings table ────────────────────────────────────────── */
   .standings-tbl { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 16px; }
   .standings-tbl th { color: #555; font-size: 10px; letter-spacing: 2px;
@@ -207,6 +253,12 @@
     #aux-controls { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
     #controls:not(.show-aux) #aux-controls { display: none; }
     .overlay-inner { padding: 16px 14px; }
+    .setup-inner { padding-bottom: 0; }
+    .start-bar { margin: 0 -14px; padding: 12px 14px 14px; }
+    .planet-grid { grid-template-columns: repeat(2, 1fr); }
+    .big-title { font-size: 24px; letter-spacing: 4px; }
+    .title-canvas { height: 92px; }
+    .preset-btn { flex: 1 1 44%; }
     .overlay-title { font-size: 18px; }
     .player-row { flex-wrap: wrap; }
     .ai-toggle { margin-left: 0; }
@@ -252,83 +304,77 @@
 
 <!-- Setup Screen -->
 <div id="setup-screen" class="overlay">
-  <div class="overlay-inner">
-    <h1 class="overlay-title">CRATERFALL</h1>
-    <p class="overlay-sub">TANK COMBAT</p>
-    <p class="section-label">PLAYERS</p>
-    <div class="matches-row" style="margin-bottom:10px">
-      <label>NUMBER OF PLAYERS</label>
-      <select id="num-players-sel" onchange="onNumPlayersChange()">
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4" selected>4</option>
-        <option value="5">5</option>
-        <option value="6">6</option>
-        <option value="7">7</option>
-        <option value="8">8</option>
-        <option value="9">9</option>
-        <option value="10">10</option>
-      </select>
-    </div>
-    <div id="player-rows"></div>
-    <div class="matches-row">
-      <label>MATCHES PER GAME</label>
-      <select id="matches-sel">
-        <option value="3">3</option>
-        <option value="5" selected>5</option>
-        <option value="7">7</option>
-        <option value="10">10</option>
-        <option value="15">15</option>
-        <option value="20">20</option>
-        <option value="25">25</option>
-        <option value="30">30</option>
-        <option value="40">40</option>
-        <option value="50">50</option>
-      </select>
-    </div>
-    <div class="matches-row">
-      <label>GRAVITY MODE</label>
-      <select id="gravity-mode-sel" onchange="onGravityModeChange()">
-        <option value="fixed">Fixed — same planet every match</option>
-        <option value="random">Random — new planet each match</option>
-      </select>
-    </div>
-    <div class="matches-row">
-      <label>SOUND EFFECTS</label>
-      <button class="sound-toggle-btn" id="setup-sound-btn" onclick="toggleSound()">🔊 ON</button>
-    </div>
-    <div class="matches-row">
-      <label>MUSIC</label>
-      <button class="sound-toggle-btn" id="setup-music-btn" onclick="toggleMusic()">🎵 ON</button>
-    </div>
-    <div class="matches-row" id="music-vol-row">
-      <label>MUSIC VOLUME</label>
-      <div class="vol-group">
+  <div class="overlay-inner setup-inner">
+    <canvas id="title-canvas" class="title-canvas" aria-hidden="true"></canvas>
+    <h1 class="overlay-title big-title">CRATERFALL</h1>
+    <p class="overlay-sub">TANK COMBAT &middot; LAST TANK STANDING</p>
+
+    <div class="audio-tray">
+      <button class="sound-toggle-btn" id="setup-sound-btn" onclick="toggleSound()" title="Sound effects">🔊 ON</button>
+      <button class="sound-toggle-btn" id="setup-music-btn" onclick="toggleMusic()" title="Music">🎵 ON</button>
+      <div class="vol-group" id="music-vol-row">
         <input type="range" class="vol-slider" id="setup-music-vol"
                min="0" max="100" step="1" value="50" aria-label="Music volume">
         <span class="vol-val" id="setup-music-vol-val">50%</span>
       </div>
     </div>
-    <div class="matches-row">
-      <label>RANDOM EVENTS</label>
+
+    <div class="setup-card">
+      <p class="section-label">QUICK START</p>
+      <div class="preset-row" id="preset-row"></div>
+    </div>
+
+    <div class="setup-card">
+      <p class="section-label">PLAYERS</p>
+      <div class="seg" id="seg-players" role="group" aria-label="Number of players"></div>
+      <div id="player-rows"></div>
+    </div>
+
+    <div class="setup-card">
+      <p class="section-label">BATTLE ARENA</p>
+      <div class="planet-grid" id="planet-grid" role="group" aria-label="Battle arena"></div>
+    </div>
+
+    <div class="setup-card">
+      <p class="section-label">MATCHES PER GAME</p>
+      <div class="seg" id="seg-matches" role="group" aria-label="Matches per game"></div>
+      <p class="section-label" style="margin-top:16px">RANDOM EVENTS</p>
+      <div class="seg" id="seg-events" role="group" aria-label="Random events"></div>
+      <p class="seg-hint" id="events-hint"></p>
+    </div>
+
+    <!-- The segmented controls above drive these; beginGame() reads their values -->
+    <div style="display:none" aria-hidden="true">
+      <select id="num-players-sel" onchange="onNumPlayersChange()">
+        <option value="2">2</option><option value="3">3</option><option value="4" selected>4</option>
+        <option value="5">5</option><option value="6">6</option><option value="7">7</option>
+        <option value="8">8</option><option value="9">9</option><option value="10">10</option>
+      </select>
+      <select id="matches-sel">
+        <option value="3">3</option><option value="5" selected>5</option><option value="7">7</option>
+        <option value="10">10</option><option value="15">15</option><option value="20">20</option>
+        <option value="25">25</option><option value="30">30</option><option value="40">40</option>
+        <option value="50">50</option>
+      </select>
+      <select id="gravity-mode-sel" onchange="onGravityModeChange()">
+        <option value="fixed">Fixed</option><option value="random">Random</option>
+      </select>
       <select id="events-sel">
         <option value="off">Off — nothing but tanks</option>
-        <option value="rare">Rare — ~1 turn in 10</option>
-        <option value="occasional" selected>Occasional — ~1 turn in 5</option>
-        <option value="chaos">Chaos — ~2 turns in 5</option>
+        <option value="rare">Rare — about 1 turn in 10</option>
+        <option value="occasional" selected>Occasional — about 1 turn in 5</option>
+        <option value="chaos">Chaos — about 2 turns in 5</option>
       </select>
-    </div>
-    <div class="matches-row" id="planet-row">
-      <label>BATTLE ARENA</label>
       <select id="planet-sel">
-        <option value="0">🌙 Moon    — 0.17g | no wind</option>
-        <option value="1">🔴 Mars    — 0.38g | light wind</option>
-        <option value="2" selected>🌍 Earth   — 1.00g | normal</option>
-        <option value="3">🪐 Jupiter — 2.53g | fierce wind</option>
-        <option value="4">🟠 Titan   — 0.14g | gusty haze</option>
+        <option value="0">Moon</option><option value="1">Mars</option><option value="2" selected>Earth</option>
+        <option value="3">Jupiter</option><option value="4">Titan</option>
       </select>
     </div>
-    <button class="big-btn" onclick="beginGame()">START GAME</button>
+
+    <div class="start-bar">
+      <p class="setup-summary" id="setup-summary"></p>
+      <button class="big-btn start-btn" id="start-btn" onclick="beginGame()">▶ START GAME</button>
+    </div>
   </div>
 </div>
 
@@ -1066,6 +1112,25 @@ let setupConfig = {
   events: 'occasional', // key of EVENT_CHANCE
 };
 
+// Remember the last setup between visits (names, AI levels, rules, arena).
+try {
+  const sv = JSON.parse(localStorage.getItem('seSetup'));
+  if (sv && typeof sv === 'object') {
+    if (Array.isArray(sv.players)) sv.players.forEach((p, i) => {
+      const t = setupConfig.players[i];
+      if (!t || !p) return;
+      t.name = String(p.name || '').slice(0, 12) || t.name;
+      t.isAI = !!p.isAI;
+      t.aiLevel = [-1, 0, 1, 2, 3].includes(p.aiLevel) ? p.aiLevel : -1;
+    });
+    if (sv.numPlayers >= 2 && sv.numPlayers <= 10) setupConfig.numPlayers = sv.numPlayers | 0;
+    if ([3,5,7,10,15,20,25,30,40,50].includes(sv.matches)) setupConfig.matches = sv.matches;
+    if (sv.planet >= 0 && sv.planet < PLANETS.length) setupConfig.planet = sv.planet | 0;
+    if (sv.gravityMode === 'fixed' || sv.gravityMode === 'random') setupConfig.gravityMode = sv.gravityMode;
+    if (sv.events in EVENT_CHANCE) setupConfig.events = sv.events;
+  }
+} catch (e) { /* private mode or corrupt data: fall back to defaults */ }
+
 // ─── Game state ───────────────────────────────────────────────────────────────
 let canvas, ctx, W, H;
 let dpr = 1;
@@ -1125,10 +1190,7 @@ function makePlayer(i, name, isAI, aiLevel) {
 }
 
 // ─── Setup screen ─────────────────────────────────────────────────────────────
-function onGravityModeChange() {
-  const mode = document.getElementById('gravity-mode-sel').value;
-  document.getElementById('planet-row').style.display = mode === 'fixed' ? '' : 'none';
-}
+function onGravityModeChange() { syncSetupUI(); }
 
 function onNumPlayersChange() {
   const n = +document.getElementById('num-players-sel').value;
@@ -1136,6 +1198,7 @@ function onNumPlayersChange() {
     const row = document.getElementById(`player-row-${i}`);
     if (row) row.style.display = i < n ? '' : 'none';
   }
+  syncSetupUI();
 }
 
 function showSetupScreen() {
@@ -1167,9 +1230,11 @@ function showSetupScreen() {
     container.appendChild(row);
     document.getElementById(`phuman-${i}`).addEventListener('change', () => {
       document.getElementById(`ailevel-${i}`).style.display = 'none';
+      syncSetupUI();
     });
     document.getElementById(`pai-${i}`).addEventListener('change', () => {
       document.getElementById(`ailevel-${i}`).style.display = 'inline-block';
+      syncSetupUI();
     });
   });
 
@@ -1179,11 +1244,200 @@ function showSetupScreen() {
   document.getElementById('gravity-mode-sel').value = setupConfig.gravityMode;
   document.getElementById('events-sel').value = setupConfig.events;
   document.getElementById('planet-sel').value = setupConfig.planet;
-  document.getElementById('planet-row').style.display = setupConfig.gravityMode === 'fixed' ? '' : 'none';
+  buildSetupControls();
+  syncSetupUI();
   document.getElementById('setup-screen').style.display = 'flex';
   updateSoundBtns();
   updateMusicBtns();
   MusicManager.play('menu');
+  startTitleAnim();
+}
+
+// ─── Start-screen controls ────────────────────────────────────────────────────
+// Segmented buttons, presets and the planet picker all drive the hidden <select>s
+// above, so beginGame() keeps reading one source of truth.
+const PLANET_CARDS = [
+  { ico:'🌙', meta:'no wind · floaty' },
+  { ico:'🔴', meta:'light wind' },
+  { ico:'🌍', meta:'balanced' },
+  { ico:'🪐', meta:'heavy · gusty' },
+  { ico:'🟠', meta:'floaty · gusty' },
+];
+const SETUP_PRESETS = [
+  { label:'SOLO vs AI',  sub:'you + 3 computers', n:4, humans:1 },
+  { label:'2 PLAYERS',   sub:'head to head',      n:2, humans:2 },
+  { label:'HOT SEAT',    sub:'4 humans, 1 screen', n:4, humans:4 },
+  { label:'WATCH AI',    sub:'4 computers fight', n:4, humans:0 },
+];
+
+function buildSeg(boxId, selId, labelFn) {
+  const sel = document.getElementById(selId), box = document.getElementById(boxId);
+  box.innerHTML = '';
+  [...sel.options].forEach(o => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'seg-btn'; b.dataset.v = o.value;
+    b.textContent = labelFn ? labelFn(o) : o.textContent;
+    b.onclick = () => { sel.value = o.value; sel.dispatchEvent(new Event('change')); syncSetupUI(); };
+    box.appendChild(b);
+  });
+}
+
+function buildSetupControls() {
+  buildSeg('seg-players', 'num-players-sel');
+  buildSeg('seg-matches', 'matches-sel');
+  buildSeg('seg-events', 'events-sel', o => o.textContent.split(' — ')[0]);
+
+  const grid = document.getElementById('planet-grid');
+  grid.innerHTML = '';
+  PLANETS.forEach((pl, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'planet-card'; b.dataset.planet = i;
+    b.innerHTML = `<span class="pc-ico">${PLANET_CARDS[i].ico}</span><span class="pc-name">${pl.name.toUpperCase()}</span>` +
+                  `<span class="pc-meta">${pl.gravityMult.toFixed(2)}g · ${PLANET_CARDS[i].meta}</span>`;
+    b.onclick = () => {
+      document.getElementById('gravity-mode-sel').value = 'fixed';
+      document.getElementById('planet-sel').value = i;
+      syncSetupUI();
+    };
+    grid.appendChild(b);
+  });
+  const rnd = document.createElement('button');
+  rnd.type = 'button'; rnd.className = 'planet-card'; rnd.dataset.planet = 'random';
+  rnd.innerHTML = '<span class="pc-ico">🎲</span><span class="pc-name">RANDOM</span><span class="pc-meta">new planet each match</span>';
+  rnd.onclick = () => { document.getElementById('gravity-mode-sel').value = 'random'; syncSetupUI(); };
+  grid.appendChild(rnd);
+
+  const pr = document.getElementById('preset-row');
+  pr.innerHTML = '';
+  SETUP_PRESETS.forEach(p => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'preset-btn';
+    b.innerHTML = `${p.label}<small>${p.sub}</small>`;
+    b.onclick = () => applyPreset(p);
+    pr.appendChild(b);
+  });
+}
+
+function applyPreset(p) {
+  document.getElementById('num-players-sel').value = p.n;
+  for (let i = 0; i < 10; i++) {
+    const human = i < p.humans;
+    document.getElementById(`phuman-${i}`).checked = human;
+    document.getElementById(`pai-${i}`).checked = !human;
+    document.getElementById(`ailevel-${i}`).style.display = human ? 'none' : 'inline-block';
+  }
+  onNumPlayersChange();
+}
+
+function syncSetupUI() {
+  const val = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  for (const [box, sel] of [['seg-players','num-players-sel'], ['seg-matches','matches-sel'], ['seg-events','events-sel']]) {
+    const el = document.getElementById(box);
+    if (!el) continue;
+    el.querySelectorAll('.seg-btn').forEach(b => b.classList.toggle('on', b.dataset.v === val(sel)));
+  }
+  const random = val('gravity-mode-sel') === 'random';
+  document.querySelectorAll('#planet-grid .planet-card').forEach(b => {
+    b.classList.toggle('on', random ? b.dataset.planet === 'random' : b.dataset.planet === val('planet-sel'));
+  });
+  const evOpt = document.getElementById('events-sel');
+  const hint = document.getElementById('events-hint');
+  if (hint && evOpt && evOpt.selectedOptions[0]) hint.textContent = evOpt.selectedOptions[0].textContent.split(' — ')[1] || '';
+
+  const n = +val('num-players-sel') || 2;
+  let humans = 0;
+  for (let i = 0; i < n; i++) { const h = document.getElementById(`phuman-${i}`); if (h && h.checked) humans++; }
+  const planetName = random ? 'Random planet' : (PLANETS[+val('planet-sel')] || PLANETS[2]).name;
+  const ev = (evOpt && evOpt.selectedOptions[0] ? evOpt.selectedOptions[0].textContent.split(' — ')[0] : '');
+  const sum = document.getElementById('setup-summary');
+  if (sum) sum.innerHTML = `<b>${n}</b> players (${humans} human · ${n - humans} AI) · <b>${val('matches-sel')}</b> matches · <b>${planetName}</b> · events <b>${ev.toLowerCase()}</b>`;
+  const btn = document.getElementById('start-btn');
+  if (btn) btn.textContent = humans === 0 ? '▶ WATCH THE AI FIGHT' : '▶ START GAME';
+}
+
+// Enter starts the game from anywhere on the setup screen except a focused button/select
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const scr = document.getElementById('setup-screen');
+  if (!scr || scr.style.display === 'none') return;
+  const t = e.target;
+  if (t && (t.tagName === 'BUTTON' || t.tagName === 'SELECT')) return;
+  e.preventDefault();
+  beginGame();
+});
+
+// ─── Title banner: two tanks trading shots over a ridge ───────────────────────
+let titleAnimOn = false;
+function startTitleAnim() {
+  const cv = document.getElementById('title-canvas');
+  if (!cv || titleAnimOn) return;
+  titleAnimOn = true;
+  const c = cv.getContext('2d');
+  const stars = Array.from({ length: 80 }, () => ({ x: Math.random(), y: Math.random() * 0.75, s: 0.4 + Math.random() * 1.2, p: Math.random() * 6 }));
+  const G = 260, FLIGHT = 1.5;
+  let shells = [], bursts = [], nextShot = 0.7, side = 0;
+  const t0 = performance.now();
+  const ridge = (x, w, base, amp, f, ph) => base + Math.sin(x / w * f + ph) * amp + Math.sin(x / w * f * 2.7 + ph * 2) * amp * 0.35;
+
+  function frame(now) {
+    if (document.getElementById('setup-screen').style.display === 'none') { titleAnimOn = false; return; }
+    const w = cv.clientWidth, h = cv.clientHeight;
+    if (!w) { requestAnimationFrame(frame); return; }
+    const d = Math.min(window.devicePixelRatio || 1, 2);
+    if (cv.width !== Math.round(w * d)) { cv.width = Math.round(w * d); cv.height = Math.round(h * d); }
+    c.setTransform(d, 0, 0, d, 0, 0);
+    const t = (now - t0) / 1000;
+
+    const sky = c.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, '#02030c'); sky.addColorStop(0.7, '#1a0c20'); sky.addColorStop(1, '#4a1a10');
+    c.fillStyle = sky; c.fillRect(0, 0, w, h);
+    for (const st of stars) {
+      c.globalAlpha = 0.35 + 0.35 * Math.sin(t * 1.5 + st.p);
+      c.fillStyle = '#fff'; c.fillRect(st.x * w, st.y * h, st.s, st.s);
+    }
+    c.globalAlpha = 1;
+    // back and front ridges
+    for (const [base, amp, f, ph, col] of [[h * 0.62, 9, 5, 1.2, '#241018'], [h * 0.8, 7, 7, 0.3, '#10190d']]) {
+      c.fillStyle = col; c.beginPath(); c.moveTo(0, h);
+      for (let x = 0; x <= w; x += 4) c.lineTo(x, ridge(x, w, base, amp, f, ph));
+      c.lineTo(w, h); c.closePath(); c.fill();
+    }
+    const tanks = [{ x: w * 0.14, col: '#0f0', dir: 1 }, { x: w * 0.86, col: '#f33', dir: -1 }];
+    for (const k of tanks) { k.y = ridge(k.x, w, h * 0.8, 7, 7, 0.3); }
+
+    if (t >= nextShot) {
+      const from = tanks[side], to = tanks[1 - side];
+      const sx = from.x, sy = from.y - 14;
+      const tx = to.x + (Math.random() - 0.5) * 30, ty = to.y - 6;
+      shells.push({ t0: t, sx, sy, vx: (tx - sx) / FLIGHT, vy: (ty - sy - 0.5 * G * FLIGHT * FLIGHT) / FLIGHT, tx, ty, col: from.col });
+      nextShot += 2.8; side ^= 1;
+    }
+    for (let i = shells.length - 1; i >= 0; i--) {
+      const sh = shells[i], age = t - sh.t0;
+      if (age >= FLIGHT) { bursts.push({ x: sh.tx, y: sh.ty, t0: t }); shells.splice(i, 1); continue; }
+      c.strokeStyle = sh.col; c.lineWidth = 1.5; c.globalAlpha = 0.5; c.beginPath();
+      for (let a = Math.max(0, age - 0.35); a <= age; a += 0.03) c.lineTo(sh.sx + sh.vx * a, sh.sy + sh.vy * a + 0.5 * G * a * a);
+      c.stroke(); c.globalAlpha = 1;
+      c.fillStyle = '#fff'; c.beginPath(); c.arc(sh.sx + sh.vx * age, sh.sy + sh.vy * age + 0.5 * G * age * age, 2.2, 0, 7); c.fill();
+    }
+    for (let i = bursts.length - 1; i >= 0; i--) {
+      const bu = bursts[i], a = (t - bu.t0) / 0.7;
+      if (a >= 1) { bursts.splice(i, 1); continue; }
+      const r = 6 + 26 * Math.sqrt(a);
+      const g = c.createRadialGradient(bu.x, bu.y, 0, bu.x, bu.y, r);
+      g.addColorStop(0, `rgba(255,255,220,${0.9 * (1 - a)})`); g.addColorStop(0.5, `rgba(255,140,30,${0.6 * (1 - a)})`); g.addColorStop(1, 'rgba(255,60,0,0)');
+      c.fillStyle = g; c.beginPath(); c.arc(bu.x, bu.y, r, 0, 7); c.fill();
+    }
+    for (const k of tanks) {
+      c.fillStyle = k.col; c.fillRect(k.x - 9, k.y - 8, 18, 8);
+      c.beginPath(); c.arc(k.x, k.y - 8, 5, Math.PI, 0); c.fill();
+      c.strokeStyle = k.col; c.lineWidth = 3; c.beginPath(); c.moveTo(k.x, k.y - 9);
+      c.lineTo(k.x + k.dir * 13, k.y - 9 - 9); c.stroke();
+    }
+    if (reduceMotion) { titleAnimOn = false; return; }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
 }
 
 function beginGame() {
@@ -1197,6 +1451,7 @@ function beginGame() {
   setupConfig.gravityMode = document.getElementById('gravity-mode-sel').value;
   setupConfig.events = document.getElementById('events-sel').value;
   setupConfig.planet = +document.getElementById('planet-sel').value;
+  try { localStorage.setItem('seSetup', JSON.stringify(setupConfig)); } catch (e) {}
   document.getElementById('setup-screen').style.display = 'none';
   MusicManager.play('game');
   initGame();

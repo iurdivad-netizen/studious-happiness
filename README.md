@@ -18,7 +18,7 @@ Then visit <http://localhost:8000>.
 
 ## How to play
 
-1. On the setup screen, choose the players (human or AI, with a difficulty for each AI), how many matches to play, the planet and the random-event frequency, then press **START GAME**.
+1. On the start screen, pick a quick-start preset or choose the players (human or AI, with a difficulty for each AI), the arena, how many matches to play and the random-event frequency, then press **START GAME** (or `Enter`).
 2. On your turn, set **angle** and **power**, choose a **weapon**, and press **FIRE!**.
 3. Last tank standing wins the match. After each match there is an **arsenal shop** where you spend your winnings.
 4. When the final match ends, the player with the highest score wins the tournament.
@@ -97,7 +97,7 @@ Computer players come in four levels. Higher levels aim more accurately, compens
 
 ## Settings that persist
 
-Sound on/off, music on/off and music volume are saved in `localStorage`. Everything else resets when the page reloads.
+Sound on/off, music on/off and music volume are saved in `localStorage`, along with your last start-screen setup (player names, human/AI choices and AI levels, player count, matches, arena and random-event frequency). Game progress itself is not saved; reloading mid-game returns you to the start screen.
 
 ## Project layout
 
