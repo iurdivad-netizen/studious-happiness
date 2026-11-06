@@ -420,6 +420,17 @@ const BARREL_LEN = 12;
 const BASE_GRAVITY = 120;
 let gravity = BASE_GRAVITY;
 const FPS = 60;
+
+// Launch speed is scaled so a 45° shot at power 100 covers RANGE_FACTOR field
+// widths on level ground, whatever the planet's gravity or the window's size.
+// (A fixed px/s per power unit gave Jupiter a 527px ceiling that could not cross
+// a wide field, while the Moon and Titan overshot it 6-7x and made each power
+// step worth ~40px.) Earth at 1280px wide keeps its old feel: 4.0 px/s per power.
+// Gravity still sets flight time and arc height; wind stays proportional to it.
+const RANGE_FACTOR = 1.05;
+function launchSpeed(power) {
+  return power * Math.sqrt(RANGE_FACTOR * W * gravity) / 100;
+}
 const FALL_DEATH_HEIGHT = 150; // px of free-fall before a tank is destroyed
 
 // ─── Roller tuning ────────────────────────────────────────────────────────────
@@ -1803,7 +1814,7 @@ function aiSolveShot(p, target, windShare) {
   const results = [];
 
   for (let power = 10; power <= 100; power += 5) {
-    const speed = power * 4;
+    const speed = launchSpeed(power);
     let best = null;
     for (let angle = 5; angle <= 175; angle++) {
       const rad = angle * Math.PI / 180;
@@ -2176,7 +2187,7 @@ function fire() {
   SoundManager.playFire(wep.name);
 
   const rad = p.angle * Math.PI / 180;
-  const speed = p.power * 4;
+  const speed = launchSpeed(p.power);
   const vx0 = Math.cos(Math.PI - rad) * speed;
   const vy0 = -Math.sin(rad) * speed;
   const n = wep.projectiles;
