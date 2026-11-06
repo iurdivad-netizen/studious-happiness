@@ -7,7 +7,7 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #000; color: #0f0; font-family: 'Courier New', monospace; overflow: hidden; user-select: none; }
-  #container { display: flex; flex-direction: column; height: 100vh; }
+  #container { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
   #hud { background: #111; border-bottom: 2px solid #0f0; padding: 4px 10px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-size: 13px; min-height: 44px; flex-shrink: 0; }
   #hud .player-info { display: flex; gap: 8px; align-items: center; }
   #hud .hud-label { color: #888; }
@@ -155,8 +155,18 @@
   .sound-toggle-btn:hover { background: #030; }
   .sound-toggle-btn.sfx-off { color: #666; border-color: #444; }
 
+  /* ── Fine-aim steppers + secondary controls ─────────────── */
+  .step-btn {
+    background: #111; color: #0f0; border: 1px solid #0f0; padding: 1px 9px;
+    font-size: 14px; line-height: 1.2; touch-action: manipulation;
+  }
+  .step-btn:hover { background: #030; }
+  /* On desktop the wrapper vanishes, so the bar lays out exactly as before */
+  #aux-controls { display: contents; }
+  #aux-toggle { display: none; }
+
   /* ── Mobile adjustments ─────────────────────────────────── */
-  @media (max-width: 640px) {
+  @media (max-width: 640px), (max-height: 500px) and (pointer: coarse) {
     #hud { gap: 6px; padding: 3px 6px; font-size: 11px; min-height: 32px; }
     #hud .current-player { font-size: 12px; }
     #scores-hud { display: none; }
@@ -165,13 +175,28 @@
     input[type=range].vol-slider { width: 104px; }
     input[type=range]::-webkit-slider-thumb { width: 22px; height: 22px; }
     input[type=range]::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%; background: #0f0; border: none; cursor: pointer; }
-    #fire-btn { font-size: 15px; padding: 7px 20px; }
+    #fire-btn { font-size: 16px; padding: 9px 22px; flex: 1 1 auto; }
     #controls > span:last-child { display: none; }
+    /* Angle and power each get a full-width row; sliders stretch to fill it */
+    .aim-group { flex: 1 1 100%; }
+    .aim-group input[type=range] { flex: 1 1 auto; width: auto; min-width: 0; }
+    .aim-group .val { min-width: 40px; }
+    .step-btn { padding: 6px 14px; font-size: 18px; }
+    #weapon-select { flex: 1 1 40%; min-width: 0; padding: 8px 6px; }
+    /* Audio / speed controls tuck behind a gear instead of eating two rows */
+    #aux-toggle { display: inline-block; padding: 8px 12px; }
+    #aux-controls { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+    #controls:not(.show-aux) #aux-controls { display: none; }
     .overlay-inner { padding: 16px 14px; }
     .overlay-title { font-size: 18px; }
     .player-row { flex-wrap: wrap; }
     .ai-toggle { margin-left: 0; }
     #message { width: 90vw; padding: 14px 18px; font-size: 15px; }
+  }
+  /* Landscape phones: short screen, so angle and power share one row */
+  @media (max-height: 500px) and (pointer: coarse) {
+    .aim-group { flex: 1 1 38%; }
+    #hud { min-height: 26px; }
   }
   @media (max-width: 400px) {
     input[type=range] { width: 110px; }
@@ -281,7 +306,7 @@
         <option value="1">🔴 Mars    — 0.38g | light wind</option>
         <option value="2" selected>🌍 Earth   — 1.00g | normal</option>
         <option value="3">🪐 Jupiter — 2.53g | fierce wind</option>
-        <option value="4">🟠 Titan   — 0.14g | thick atmosphere</option>
+        <option value="4">🟠 Titan   — 0.14g | gusty haze</option>
       </select>
     </div>
     <button class="big-btn" onclick="beginGame()">START GAME</button>
@@ -344,14 +369,18 @@
     </div>
   </div>
   <div id="controls">
-    <div class="ctrl-group">
+    <div class="ctrl-group aim-group">
       <label>ANGLE</label>
+      <button class="step-btn" data-aim="angle" data-d="-1" aria-label="Angle down 1 degree">−</button>
       <input type="range" id="angle-slider" min="0" max="180" value="45">
+      <button class="step-btn" data-aim="angle" data-d="1" aria-label="Angle up 1 degree">+</button>
       <span class="val" id="angle-val">45°</span>
     </div>
-    <div class="ctrl-group">
+    <div class="ctrl-group aim-group">
       <label>POWER</label>
+      <button class="step-btn" data-aim="power" data-d="-1" aria-label="Power down 1">−</button>
       <input type="range" id="power-slider" min="5" max="100" value="50">
+      <button class="step-btn" data-aim="power" data-d="1" aria-label="Power up 1">+</button>
       <span class="val" id="power-val">50</span>
     </div>
     <div class="ctrl-group">
@@ -359,6 +388,8 @@
       <select id="weapon-select"></select>
     </div>
     <button id="fire-btn" onclick="fire()">FIRE!</button>
+    <button class="sound-toggle-btn" id="aux-toggle" onclick="toggleAux()" aria-label="Speed and sound settings">⚙</button>
+    <div id="aux-controls">
     <button id="fast-btn" onclick="toggleFastMode()" title="Cycle animation/thinking speed">⚡ FAST</button>
     <button class="sound-toggle-btn" id="game-sound-btn" onclick="toggleSound()" title="Toggle sound effects">🔊 ON</button>
     <button class="sound-toggle-btn" id="game-music-btn" onclick="toggleMusic()" title="Toggle music">🎵 ON</button>
@@ -367,6 +398,7 @@
       <input type="range" class="vol-slider" id="game-music-vol"
              min="0" max="100" step="1" value="50" title="Music volume" aria-label="Music volume">
       <span class="vol-val" id="game-music-vol-val">50%</span>
+    </div>
     </div>
     <span style="font-size:11px;color:#555">← → angle &nbsp;|&nbsp; [ ] power &nbsp;|&nbsp; SPACE fire</span>
   </div>
@@ -915,35 +947,40 @@ const PLAYER_COLORS = ['#0f0','#f00','#ff0','#f0f','#0ff','#f80','#08f','#f08','
 const PLAYER_NAMES  = ['Player 1','Player 2','Player 3','Player 4','Player 5','Player 6','Player 7','Player 8','Player 9','Player 10'];
 
 // ─── Planets ─────────────────────────────────────────────────────────────────
+// windMult is tuned so the strongest breeze pushes a shell with 0.17–0.30× the
+// planet's own gravity (Moon none, Earth 0.17, Mars 0.24, Jupiter/Titan ~0.30),
+// instead of scaling with raw wind units. Wind units are not comparable between
+// planets: 4.5 on Jupiter is a gentler push than 1.0 on Earth would be on Titan.
 const PLANETS = [
   { name:'Moon',    label:'🌙 Moon    (0.17g)', gravityMult:0.17, windMult:0.0,
     terrainFill:['#5a5a5a','#787878','#3a3a3a'], terrainStroke:'#a8a8a8' },
-  { name:'Mars',    label:'🔴 Mars    (0.38g)', gravityMult:0.38, windMult:0.5,
+  { name:'Mars',    label:'🔴 Mars    (0.38g)', gravityMult:0.38, windMult:0.55,
     terrainFill:['#7a3010','#9a4520','#602808'], terrainStroke:'#c06030' },
   { name:'Earth',   label:'🌍 Earth   (1.00g)', gravityMult:1.00, windMult:1.0,
     terrainFill:['#3a2a10','#5a3a18','#2a1a08'], terrainStroke:'#3d7a2a' },
-  { name:'Jupiter', label:'🪐 Jupiter (2.53g)', gravityMult:2.53, windMult:2.0,
+  { name:'Jupiter', label:'🪐 Jupiter (2.53g)', gravityMult:2.53, windMult:4.5,
     terrainFill:['#4a2a08','#6a4018','#3a2008'], terrainStroke:'#9a6830' },
-  { name:'Titan',   label:'🟠 Titan   (0.14g)', gravityMult:0.14, windMult:0.8,
+  { name:'Titan',   label:'🟠 Titan   (0.14g)', gravityMult:0.14, windMult:0.25,
     terrainFill:['#283040','#384050','#182030'], terrainStroke:'#706858' },
 ];
 
 // ─── AI intelligence levels ───────────────────────────────────────────────────
 // angleVar / powerVar = max ± deviation from perfect aim
+// windAware  = share of the real wind the AI allows for when aiming (0 = ignores it)
 // weaponPref = weapons tried in order (first with ammo wins)
 // buyPref    = weapons bought greedily in shop (highest priority first)
 const AI_LEVELS = [
-  { name:'Recruit', angleVar:25, powerVar:20,
+  { name:'Recruit', angleVar:25, powerVar:20, windAware:0,
     weaponPref: ['Baby Missile'].map(wi),
     buyPref:    [].map(wi) },
-  { name:'Soldier', angleVar:15, powerVar:10,
+  { name:'Soldier', angleVar:15, powerVar:10, windAware:0.5,
     weaponPref: ['Leap Frog','Roller','Missile','Baby Missile'].map(wi),
-    buyPref:    ['Leap Frog','Missile','Roller','Dirt Ball'].map(wi) },
-  { name:'Veteran', angleVar: 6, powerVar: 4,
+    buyPref:    ['Leap Frog','Missile','Roller'].map(wi) },
+  { name:'Veteran', angleVar: 6, powerVar: 4, windAware:0.85,
     weaponPref: ['Funky Bomb','Napalm','MIRV','Leap Frog','Roller','Missile','Baby Missile'].map(wi),
-    buyPref:    ['Funky Bomb','Napalm','MIRV','Leap Frog','Missile','Roller','Dirt Ball'].map(wi) },
-  { name:'General', angleVar: 2, powerVar: 1,
-    weaponPref: ['Nuke','Funky Bomb','Napalm','MIRV','Leap Frog','Roller','Missile','Dirt Ball','Baby Missile'].map(wi),
+    buyPref:    ['Funky Bomb','Napalm','MIRV','Leap Frog','Missile','Roller'].map(wi) },
+  { name:'General', angleVar: 2, powerVar: 1, windAware:1,
+    weaponPref: ['Nuke','Funky Bomb','Napalm','MIRV','Leap Frog','Roller','Missile','Baby Missile'].map(wi),
     buyPref:    ['Nuke','Funky Bomb','Napalm','MIRV','Leap Frog','Missile','Roller'].map(wi) },
 ];
 
@@ -1172,7 +1209,25 @@ function placeTanks() {
 }
 
 // ─── Drawing ──────────────────────────────────────────────────────────────────
+// The sky never changes within a match, but painting it costs dozens of gradients
+// and strokes (Jupiter alone: ~80 per frame). Paint once into an offscreen canvas
+// and blit it; the cache is keyed by planet and canvas size.
+let skyCache = null;
 function drawSky() {
+  const key = activePlanetIdx + '|' + W + '|' + H + '|' + dpr;
+  if (!skyCache || skyCache.key !== key) {
+    const off = document.createElement('canvas');
+    off.width = Math.round(W * dpr); off.height = Math.round(H * dpr);
+    const main = ctx;
+    ctx = off.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    try { paintSky(); } finally { ctx = main; }
+    skyCache = { key, canvas: off };
+  }
+  ctx.drawImage(skyCache.canvas, 0, 0, W, H);
+}
+
+function paintSky() {
   const pname = PLANETS[activePlanetIdx].name;
 
   if (pname === 'Moon') {
@@ -1591,6 +1646,13 @@ function updateTankPhysics(dt) {
   return anyFalling;
 }
 
+// Ticks a shell launched upward at `speed` needs to come back down, with slack.
+// A fixed lifetime silently deleted slow-falling shots (Moon, Titan: 10+ second
+// flights) before they ever landed, so lifetimes are sized from gravity.
+function flightLife(speed, minTicks) {
+  return Math.max(minTicks, Math.ceil((2 * speed / gravity) * FPS * 1.6) + 60);
+}
+
 function explodeAt(cx, cy, wep, ownerId) {
   wep.dirt ? dirtUp(cx, cy, wep.radius) : blastCrater(cx, cy, wep.radius);
   explosions.push({ x:cx, y:cy, radius:wep.radius, color:wep.color, life:45, maxLife:45, phase:0 });
@@ -1604,7 +1666,7 @@ function explodeAt(cx, cy, wep, ownerId) {
         x:cx, y:cy,
         vx: Math.cos(a)*spd, vy: -Math.abs(Math.sin(a))*spd*0.5 - 30,
         weapon: {...wep, radius:wep.radius*0.4, damage:wep.damage*0.5, napalm:false},
-        ownerId, color:'#f80', trailColor:'#f40', trail:[], life:120,
+        ownerId, color:'#f80', trailColor:'#f40', trail:[], life:flightLife(spd, 120),
         age:0, hopsLeft:0,
       });
     }
@@ -1692,7 +1754,7 @@ function spawnBomblets(cx, cy, wep, ownerId) {
       vx: Math.cos(a) * spd, vy: -Math.sin(a) * spd,
       weapon: sub, ownerId,
       color: col, trailColor: col, trail: [],
-      life: 400, roller: false, rolling: false,
+      life: flightLife(spd, 400), roller: false, rolling: false,
       size: 4, glow: true,
       age: 0, hopsLeft: 0,
     });
@@ -1725,6 +1787,62 @@ function resolveImpact(proj, ix, iy) {
 }
 
 // ─── AI ───────────────────────────────────────────────────────────────────────
+// Finds an (angle, power) that lands on `target`, using the same motion the
+// projectiles use: constant acceleration (0.5·wind, gravity). `windShare` scales
+// how much of the real wind the AI allows for, so weaker levels drift off target.
+// Candidate shots whose path clips the terrain before the target are rejected;
+// if none is clear the least-bad shot is returned.
+function aiSolveShot(p, target, windShare) {
+  const x0 = p.x, y0 = p.y - TANK_H;
+  const tx = target.x, ty = target.y - 4;
+  const ax = 0.5 * wind * windShare, ay = gravity;
+  const dy = ty - y0;
+  // The angle a flat 45° lob would use; the further a shot is from it, the more
+  // a one-degree or one-power slip moves the landing point.
+  const flat = tx > x0 ? 135 : 45;
+  const results = [];
+
+  for (let power = 10; power <= 100; power += 5) {
+    const speed = power * 4;
+    let best = null;
+    for (let angle = 5; angle <= 175; angle++) {
+      const rad = angle * Math.PI / 180;
+      const vx = -Math.cos(rad) * speed, vy = -Math.sin(rad) * speed;
+      // Descending crossing of the target's height
+      const disc = vy * vy + 2 * ay * dy;
+      if (disc < 0) continue;
+      const tHit = (-vy + Math.sqrt(disc)) / ay;
+      if (tHit <= 0) continue;
+      const err = Math.abs(x0 + vx * tHit + 0.5 * ax * tHit * tHit - tx);
+      if (err > 40 && best && best.err < 40) continue;   // cheap reject
+
+      // Does the arc clear the ground on its way there?
+      let clear = true;
+      const steps = Math.max(8, Math.ceil(tHit * 30));
+      for (let i = 1; i < steps; i++) {
+        const t = tHit * i / steps;
+        const x = x0 + vx * t + 0.5 * ax * t * t;
+        const y = y0 + vy * t + 0.5 * ay * t * t;
+        if (x < 0 || x >= W) break;
+        if (Math.hypot(x - x0, y - y0) < 14 || Math.abs(x - tx) < 10) continue;
+        if (y > terrain[Math.round(x)] + 1) { clear = false; break; }
+      }
+      const cand = { angle, power, err, clear, steep: Math.abs(angle - flat) };
+      if (!best || (clear && !best.clear) || (clear === best.clear && err < best.err)) best = cand;
+    }
+    if (best) results.push(best);
+  }
+
+  // Prefer a clear shot that lands on the mark, and among those the flattest arc
+  // (least sensitive to aiming error); otherwise the least-bad shot we found.
+  const good = results.filter(r => r.clear && r.err < 4);
+  if (good.length) return good.reduce((a, b) => (b.steep < a.steep ? b : a));
+  const clear = results.filter(r => r.clear);
+  const pool = clear.length ? clear : results;
+  if (pool.length) return pool.reduce((a, b) => (b.err < a.err ? b : a));
+  return { angle: flat, power: 60 };
+}
+
 function aiTakeTurn() {
   if (!gameRunning || animating) return;
   const p = players[currentPlayer];
@@ -1739,28 +1857,11 @@ function aiTakeTurn() {
   if (!enemies.length) return;
   const target = enemies.reduce((b, e) => Math.abs(e.x-p.x) < Math.abs(b.x-p.x) ? e : b, enemies[0]);
 
-  const rdx = target.x - p.x;
-  const rdy = target.y - (p.y - TANK_H);
-  let solvedAngle = null, solvedPower = 50;
-
-  for (const power of [50, 60, 40, 70, 30, 80, 90]) {
-    if (Math.abs(rdx) < 2) { solvedAngle = 90; solvedPower = power; break; }
-    const speed = power * 4;
-    const k = 0.5 * gravity * rdx * rdx / (speed * speed);
-    const disc = rdx*rdx - 4*k*(k - rdy);
-    if (disc < 0) continue;
-    const sq = Math.sqrt(disc);
-    const u1 = (-rdx + sq) / (2*k), u2 = (-rdx - sq) / (2*k);
-    const u = Math.abs(u1) <= Math.abs(u2) ? u1 : u2;
-    const rad = rdx >= 0 ? Math.PI + Math.atan(u) : Math.atan(u);
-    const angle = rad * 180 / Math.PI;
-    if (angle >= 5 && angle <= 175) { solvedAngle = angle; solvedPower = power; break; }
-  }
-
-  if (solvedAngle === null) { solvedAngle = rdx > 0 ? 135 : 45; solvedPower = 60; }
+  const sol = aiSolveShot(p, target, lvl.windAware ?? 0);
+  const solvedAngle = sol.angle, solvedPower = sol.power;
 
   p.angle = Math.max(5, Math.min(175, Math.round(solvedAngle + (Math.random()-0.5)*2*lvl.angleVar)));
-  p.power = Math.max(15, Math.min(100, solvedPower + Math.round((Math.random()-0.5)*2*lvl.powerVar)));
+  p.power = Math.max(8, Math.min(100, solvedPower + Math.round((Math.random()-0.5)*2*lvl.powerVar)));
   syncSliders();
   updateHUD();
   setTimeout(fire, 700 + Math.random()*500);
@@ -2087,7 +2188,7 @@ function fire() {
       vy: vy0 + (n > 1 ? Math.random()*(-30) : 0),
       weapon: wep, ownerId: p.id,
       color: wep.color, trailColor: wep.trail,
-      trail: [], life: 600, roller: !!wep.roller, rolling: false,
+      trail: [], life: flightLife(speed, 600), roller: !!wep.roller, rolling: false,
       age: 0,
       mirv: !!wep.mirv,
       hopsLeft: wep.hops || 0,
@@ -2237,6 +2338,14 @@ function physicsStep(dt) {
   return false;
 }
 
+// Setup, shop and winner screens are opaque and fill the viewport, so there is
+// no point repainting the field underneath them 60 times a second.
+let overlayEls = null;
+function menuCoversCanvas() {
+  if (!overlayEls) overlayEls = ['setup-screen', 'shop-screen', 'winner-screen'].map(id => document.getElementById(id));
+  return overlayEls.some(el => el.style.display !== 'none');
+}
+
 function loop(ts) {
   const realDt = Math.min((ts - lastTime) / 1000, 0.05);
   lastTime = ts;
@@ -2251,7 +2360,7 @@ function loop(ts) {
     physicsStep(realDt);
   }
 
-  if (terrain.length > 0) render();
+  if (terrain.length > 0 && !menuCoversCanvas()) render();
   requestAnimationFrame(loop);
 }
 
@@ -2539,6 +2648,31 @@ document.addEventListener('keydown', e => {
   else if (e.key===']') { p.power = Math.min(100, p.power+2); syncSliders(); }
   else if (e.key===' '||e.key==='Enter') { e.preventDefault(); fire(); }
 });
+// ± buttons next to the sliders: tap for one step, hold to repeat
+function stepAim(kind, d) {
+  if (!gameRunning || animating || players[currentPlayer].isAI) return;
+  const p = players[currentPlayer];
+  if (kind === 'angle') p.angle = Math.max(0, Math.min(180, p.angle + d));
+  else p.power = Math.max(5, Math.min(100, p.power + d));
+  syncSliders();
+}
+(function wireStepButtons() {
+  let hold = null;
+  const stop = () => { if (hold) { clearTimeout(hold.t); clearInterval(hold.i); hold = null; } };
+  document.querySelectorAll('.step-btn').forEach(btn => {
+    btn.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      stop();
+      const kind = btn.dataset.aim, d = +btn.dataset.d;
+      stepAim(kind, d);
+      hold = { t: setTimeout(() => { hold.i = setInterval(() => stepAim(kind, d), 70); }, 380), i: null };
+    });
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(ev, stop);
+  });
+})();
+function toggleAux() {
+  document.getElementById('controls').classList.toggle('show-aux');
+}
 function syncSliders() {
   const p = players[currentPlayer];
   document.getElementById('angle-slider').value = p.angle;
