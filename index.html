@@ -8,24 +8,39 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { background: #000; color: #0f0; font-family: 'Courier New', monospace; overflow: hidden; user-select: none; }
   #container { display: flex; flex-direction: column; height: 100vh; height: 100dvh; }
-  #hud { background: #111; border-bottom: 2px solid #0f0; padding: 4px 10px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-size: 13px; min-height: 44px; flex-shrink: 0; }
+  #hud { background: linear-gradient(#161f16, #0a0f0a); border-bottom: 2px solid #0f0; box-shadow: 0 2px 14px rgba(0,255,0,0.18); position: relative; z-index: 3; padding: 4px 10px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-size: 13px; min-height: 44px; flex-shrink: 0; }
   #hud .player-info { display: flex; gap: 8px; align-items: center; }
   #hud .hud-label { color: #888; }
   #hud .hud-val { color: #ff0; font-weight: bold; }
-  #hud .current-player { color: #0ff; font-size: 15px; font-weight: bold; }
+  #hud .current-player { color: #0ff; font-size: 15px; font-weight: bold; padding: 2px 12px;
+    border: 1px solid currentColor; border-radius: 14px; background: rgba(255,255,255,0.06);
+    letter-spacing: 1px; text-shadow: 0 0 8px currentColor; }
+  body.no-health #hp-info { display: none; }
+  #scores-hud { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { border: 1px solid; border-radius: 10px; padding: 1px 8px; font-size: 12px; background: rgba(0,0,0,0.4); white-space: nowrap; }
+  .chip b { color: #ff0; margin-left: 3px; }
+  .chip.chip-turn { background: rgba(255,255,255,0.14); box-shadow: 0 0 8px currentColor; }
+  .chip.chip-dead { opacity: 0.4; text-decoration: line-through; }
   #canvas-wrap { flex: 1; min-height: 0; position: relative; overflow: hidden; }
   canvas { display: block; width: 100%; height: 100%; }
-  #controls { background: #111; border-top: 2px solid #0f0; padding: 6px 10px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 13px; flex-shrink: 0; }
+  #controls { background: linear-gradient(#0a0f0a, #161f16); border-top: 2px solid #0f0; box-shadow: 0 -2px 14px rgba(0,255,0,0.18); padding: 6px 10px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 13px; flex-shrink: 0; }
   .ctrl-group { display: flex; align-items: center; gap: 6px; }
   .ctrl-group label { color: #888; }
   .ctrl-group .val { color: #ff0; min-width: 36px; display: inline-block; text-align: right; }
   input[type=range] { -webkit-appearance: none; width: 120px; height: 6px; background: #333; border-radius: 3px; outline: none; }
-  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #0f0; cursor: pointer; }
-  button { background: #0f0; color: #000; border: none; padding: 5px 14px; font-family: inherit; font-size: 13px; font-weight: bold; cursor: pointer; border-radius: 2px; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #0f0; cursor: pointer; box-shadow: 0 0 8px rgba(0,255,0,0.8); }
+  input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #0f0; border: none; cursor: pointer; box-shadow: 0 0 8px rgba(0,255,0,0.8); }
+  button { background: #0f0; color: #000; border: none; padding: 5px 14px; font-family: inherit; font-size: 13px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: transform 0.08s, box-shadow 0.15s, background 0.15s; }
+  button:active:not(:disabled) { transform: scale(0.96); }
+  button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid #ff0; outline-offset: 2px; }
+  #fire-btn { background: linear-gradient(#ff6a2a, #d02a00); color: #fff; letter-spacing: 2px; text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    box-shadow: 0 0 14px rgba(255,90,30,0.55); padding: 6px 22px; }
+  #fire-btn:hover:not(:disabled) { background: linear-gradient(#ff8040, #e03800); box-shadow: 0 0 20px rgba(255,110,40,0.8); }
+  #fire-btn:disabled { background: #333; color: #777; box-shadow: none; text-shadow: none; }
   button:hover { background: #0a0; }
   button:disabled { background: #555; color: #888; cursor: default; }
   select { background: #222; color: #0f0; border: 1px solid #0f0; padding: 3px 6px; font-family: inherit; font-size: 13px; }
-  #message { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,0.88); border: 2px solid #0f0; padding: 20px 36px; text-align: center; font-size: 18px; z-index: 10; display: none; }
+  #message { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,0.88); border: 2px solid #0f0; border-radius: 6px; box-shadow: 0 0 24px rgba(0,255,0,0.25); padding: 20px 36px; text-align: center; font-size: 18px; z-index: 10; display: none; }
   #message h2 { color: #ff0; margin-bottom: 10px; }
   #message p { color: #0f0; margin-bottom: 14px; font-size: 14px; }
   #message button { font-size: 15px; padding: 8px 24px; }
@@ -34,16 +49,17 @@
   /* ── Shared overlay styles ──────────────────────────────────── */
   .overlay {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: #000; z-index: 200;
+    background: radial-gradient(ellipse at 50% 20%, #0c200c 0%, #020802 60%, #000 100%); z-index: 200;
     display: flex; align-items: flex-start; justify-content: center;
     overflow-y: auto; padding: 24px 0;
   }
   .overlay-inner {
-    border: 2px solid #0f0; padding: 26px 32px; width: 560px; max-width: 97vw;
+    border: 2px solid #0f0; padding: 26px 32px; width: 560px; max-width: 97vw; background: rgba(0,12,0,0.7);
+    box-shadow: 0 0 30px rgba(0,255,0,0.18), inset 0 0 30px rgba(0,255,0,0.05); border-radius: 6px;
   }
   .overlay-title {
     color: #ff0; text-align: center; font-size: 22px;
-    letter-spacing: 4px; margin-bottom: 4px;
+    letter-spacing: 4px; margin-bottom: 4px; text-shadow: 0 0 14px rgba(255,255,0,0.55);
   }
   .overlay-sub {
     color: #555; text-align: center; font-size: 11px;
@@ -153,6 +169,9 @@
     letter-spacing: 1px;
   }
   .sound-toggle-btn:hover { background: #030; }
+  #quit-btn { color: #f66; border-color: #f66; }
+  #quit-btn:hover { background: #300; }
+  @media (prefers-reduced-motion: reduce) { button { transition: none; } }
   .sound-toggle-btn.sfx-off { color: #666; border-color: #444; }
 
   /* ── Fine-aim steppers + secondary controls ─────────────── */
@@ -347,7 +366,7 @@
 <div id="container">
   <div id="hud">
     <span id="turn-label" class="current-player">PLAYER 1</span>
-    <span class="player-info"><span class="hud-label">HP:</span><span class="hud-val" id="hp-val">100</span></span>
+    <span class="player-info" id="hp-info"><span class="hud-label">HP:</span><span class="hud-val" id="hp-val">100</span></span>
     <span class="player-info"><span class="hud-label">CASH:$</span><span class="hud-val" id="cash-val">0</span></span>
     <span class="player-info"><span class="hud-label">MATCH:</span><span class="hud-val" id="match-val">1/5</span></span>
     <span style="flex:1"></span>
@@ -391,6 +410,7 @@
     <button class="sound-toggle-btn" id="aux-toggle" onclick="toggleAux()" aria-label="Speed and sound settings">⚙</button>
     <div id="aux-controls">
     <button id="fast-btn" onclick="toggleFastMode()" title="Cycle animation/thinking speed">⚡ FAST</button>
+    <button class="sound-toggle-btn" id="quit-btn" onclick="quitToMenu()" title="Abandon this game and return to setup">✕ MENU</button>
     <button class="sound-toggle-btn" id="game-sound-btn" onclick="toggleSound()" title="Toggle sound effects">🔊 ON</button>
     <button class="sound-toggle-btn" id="game-music-btn" onclick="toggleMusic()" title="Toggle music">🎵 ON</button>
     <div class="ctrl-group vol-group" id="music-vol-ctrl">
@@ -400,13 +420,23 @@
       <span class="vol-val" id="game-music-vol-val">50%</span>
     </div>
     </div>
-    <span style="font-size:11px;color:#555">← → angle &nbsp;|&nbsp; [ ] power &nbsp;|&nbsp; SPACE fire</span>
+    <span style="font-size:11px;color:#555">← → angle &nbsp;|&nbsp; ↑ ↓ power &nbsp;|&nbsp; Q E weapon &nbsp;|&nbsp; SPACE fire</span>
   </div>
 </div>
 
 <script>
 // ─── Constants ───────────────────────────────────────────────────────────────
 const TANK_W = 16, TANK_H = 10;
+
+function esc(str) {
+  return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function rgba(hex, a) {
+  let h = hex.replace('#', '');
+  if (h.length === 3) h = h.split('').map(c => c + c).join('');
+  if (h.length !== 6) return `rgba(255,160,40,${a})`;
+  return `rgba(${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)},${a})`;
+}
 
 function shuffleArray(arr) {
   const a = arr.slice();
@@ -420,6 +450,8 @@ const BARREL_LEN = 12;
 const BASE_GRAVITY = 120;
 let gravity = BASE_GRAVITY;
 const FPS = 60;
+const MAX_PARTICLES = 700;
+const SHOW_HEALTH = false;   // health bars / HP readout hidden for now (hits are lethal anyway)
 
 // Launch speed is scaled so a 45° shot at power 100 covers RANGE_FACTOR field
 // widths on level ground, whatever the planet's gravity or the window's size.
@@ -1060,6 +1092,10 @@ let gusts = [];           // wind-storm streaks
 let quakeTicks = 0, quakeMax = 1, quakeAmp = 0;
 let flashAlpha = 0;       // white lightning flash over the whole field
 let eventBannerTimer = null;
+let particles = [];        // sparks, debris and smoke from blasts (visual only)
+let shake = 0;             // screen-shake amplitude from big blasts
+let gameToken = 0;         // bumps on every match/menu change so stale AI timers can be ignored
+const reduceMotion = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 let speedLevel = 0; // 0 = normal, 1 = fast, 2 = fastest, 3 = ultra, 4 = instant
 const SPEED_LABELS  = ['⚡ FAST', '⚡⚡ FASTEST', '⚡⚡⚡ ULTRA', '⏩ INSTANT', '▷ NORMAL'];
 const SPEED_STEPS   = [20, 80, 400, 100000];
@@ -1103,6 +1139,7 @@ function onNumPlayersChange() {
 }
 
 function showSetupScreen() {
+  gameToken++;
   document.getElementById('message').style.display = 'none';
   document.getElementById('winner-screen').style.display = 'none';
   gameRunning = false;
@@ -1119,7 +1156,7 @@ function showSetupScreen() {
     row.innerHTML = `
       <div class="p-swatch" style="background:${PLAYER_COLORS[i]}"></div>
       <input class="p-name-input" type="text" id="pname-${i}"
-             value="${cfg.name}" maxlength="12" placeholder="Player ${i+1}">
+             value="${esc(cfg.name)}" maxlength="12" placeholder="Player ${i+1}">
       <div class="ai-toggle">
         <input type="radio" name="ptype-${i}" id="phuman-${i}" value="human" ${!cfg.isAI?'checked':''}>
         <label for="phuman-${i}">HUMAN</label>
@@ -1408,8 +1445,25 @@ function drawTerrain() {
   ctx.stroke();
 }
 
+function drawWreck(p) {
+  const x = p.x, y = getTerrainY(p.x);   // settles with the ground even after craters
+  ctx.save();
+  ctx.fillStyle = '#1b1b1b';
+  ctx.fillRect(x - TANK_W/2, y - TANK_H + 2, TANK_W, TANK_H - 2);
+  ctx.beginPath(); ctx.arc(x - 2, y - TANK_H + 2, 4.5, Math.PI, 0); ctx.fill();
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x - 2, y - TANK_H + 1); ctx.lineTo(x + 7, y - TANK_H - 4); ctx.stroke();
+  // a dying ember glow in the hull, in the player's colour
+  const flick = 0.35 + 0.25 * Math.sin(animTime * 6 + p.id * 2);
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = flick;
+  ctx.fillStyle = p.color;
+  ctx.fillRect(x - 5, y - TANK_H + 3, 10, 2);
+  ctx.restore();
+}
+
 function drawTank(p) {
-  if (!p.alive) return;
+  if (!p.alive) { drawWreck(p); return; }
   const x = p.x, y = p.y;
   ctx.fillStyle = p.color;
   ctx.fillRect(x - TANK_W/2, y - TANK_H, TANK_W, TANK_H);
@@ -1433,14 +1487,16 @@ function drawTank(p) {
   ctx.font = 'bold 10px Courier New';
   ctx.textAlign = 'center';
   ctx.fillText(p.isAI ? p.name + ' [AI]' : p.name, x, y - TANK_H - 8);
-  const bw = 30, bh = 4;
-  ctx.fillStyle = '#300';
-  ctx.fillRect(x - bw/2, y - TANK_H - 19, bw, bh);
-  ctx.fillStyle = p.hp > 50 ? '#0f0' : p.hp > 25 ? '#ff0' : '#f00';
-  ctx.fillRect(x - bw/2, y - TANK_H - 19, bw * p.hp / 100, bh);
-  ctx.strokeStyle = '#888';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x - bw/2, y - TANK_H - 19, bw, bh);
+  if (SHOW_HEALTH) {
+    const bw = 30, bh = 4;
+    ctx.fillStyle = '#300';
+    ctx.fillRect(x - bw/2, y - TANK_H - 19, bw, bh);
+    ctx.fillStyle = p.hp > 50 ? '#0f0' : p.hp > 25 ? '#ff0' : '#f00';
+    ctx.fillRect(x - bw/2, y - TANK_H - 19, bw * p.hp / 100, bh);
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x - bw/2, y - TANK_H - 19, bw, bh);
+  }
 }
 
 // Marks whose turn it is: a bobbing chevron over the tank plus a pulsing ring
@@ -1492,21 +1548,149 @@ function drawTurnMarker(p) {
   ctx.restore();
 }
 
+// Layered fireball: a coloured glow that swells, a hot white core that shrinks,
+// and a shockwave ring racing outward. Additive blending makes overlaps bloom.
 function drawExplosions() {
   for (const ex of explosions) {
+    const t = 1 - ex.life / ex.maxLife;             // 0 → 1 over the blast
+    const col = ex.color || '#f80';
+    const grow = Math.sqrt(t);
+    const r = Math.max(2, ex.radius * (0.45 + 0.65 * grow));
+    const fade = Math.pow(1 - t, 1.15);
     ctx.save();
-    ctx.globalAlpha = ex.life / ex.maxLife;
-    const g = ctx.createRadialGradient(ex.x, ex.y, 0, ex.x, ex.y, ex.radius * ex.phase);
-    g.addColorStop(0, '#fff');
-    g.addColorStop(0.2, '#ff8');
-    g.addColorStop(0.5, ex.color || '#f80');
-    g.addColorStop(1, 'rgba(255,0,0,0)');
+    ctx.globalCompositeOperation = 'lighter';
+    // glow
+    let g = ctx.createRadialGradient(ex.x, ex.y, r * 0.1, ex.x, ex.y, r * 1.2);
+    g.addColorStop(0, rgba(col, 0.75 * fade));
+    g.addColorStop(0.55, rgba(col, 0.35 * fade));
+    g.addColorStop(1, rgba(col, 0));
     ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(ex.x, ex.y, ex.radius * ex.phase, 0, Math.PI*2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(ex.x, ex.y, r * 1.2, 0, Math.PI * 2); ctx.fill();
+    // hot core
+    const cr = r * 0.62 * (1 - t * 0.85);
+    if (cr > 1) {
+      g = ctx.createRadialGradient(ex.x, ex.y, 0, ex.x, ex.y, cr);
+      g.addColorStop(0, `rgba(255,255,255,${0.95 * fade})`);
+      g.addColorStop(0.5, `rgba(255,235,140,${0.8 * fade})`);
+      g.addColorStop(1, 'rgba(255,200,80,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(ex.x, ex.y, cr, 0, Math.PI * 2); ctx.fill();
+    }
+    // shockwave
+    if (ex.radius >= 14) {
+      ctx.strokeStyle = `rgba(255,255,255,${0.5 * (1 - t)})`;
+      ctx.lineWidth = 1 + 3 * (1 - t);
+      ctx.beginPath(); ctx.arc(ex.x, ex.y, ex.radius * (0.35 + 1.45 * t), 0, Math.PI * 2); ctx.stroke();
+    }
     ctx.restore();
   }
+}
+
+// ─── Blast particles ──────────────────────────────────────────────────────────
+// Purely visual (the turn never waits on them). Debris is tinted to the planet's
+// soil, so a Mars blast throws rust and a Moon blast throws grey.
+function spawnBlastFx(x, y, radius, color, o) {
+  o = o || {};
+  if (!reduceMotion) shake = Math.min(14, Math.max(shake, radius * 0.11));
+  if (radius >= 58) flashAlpha = Math.max(flashAlpha, Math.min(reduceMotion ? 0.2 : 0.6, radius / 200));
+  if (speedLevel >= 3) return;                 // fast-forward: skip the eye candy
+  if (particles.length > MAX_PARTICLES) return;
+  const planet = PLANETS[activePlanetIdx];
+  const soil = [planet.terrainFill[1], planet.terrainFill[0], planet.terrainStroke];
+  const big = 0.5 + radius / 80;
+
+  if (!o.dirt) {
+    const n = Math.min(60, Math.round(8 + radius * 0.5));
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const spd = (60 + Math.random() * 280) * big * (a > Math.PI ? 1 : 0.75);
+      const life = 0.35 + Math.random() * 0.55;
+      particles.push({ k:'spark', x, y, vx:Math.cos(a) * spd, vy:Math.sin(a) * spd - 40,
+        life, max:life, col: Math.random() < 0.5 ? '#fff' : (o.tank ? color : (color || '#fa0')), size:1 + Math.random() * 1.6 });
+    }
+  }
+  const nd = Math.min(46, Math.round((4 + radius * 0.35) * (o.dirt ? 1.8 : 1)));
+  for (let i = 0; i < nd; i++) {
+    const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.0;
+    const spd = (50 + Math.random() * 230) * big;
+    const life = 0.7 + Math.random() * 0.9;
+    particles.push({ k:'debris', x:x + (Math.random() - 0.5) * radius * 0.5, y, vx:Math.cos(a) * spd, vy:Math.sin(a) * spd,
+      life, max:life, col: o.tank && i % 2 ? color : soil[i % 3], size:1.5 + Math.random() * 3, rot:Math.random() * 6, vr:(Math.random() - 0.5) * 14 });
+  }
+  const ns = Math.min(10, 2 + Math.round(radius / 10));
+  for (let i = 0; i < ns; i++) {
+    const life = 0.9 + Math.random() * 1.0;
+    particles.push({ k:'smoke', x:x + (Math.random() - 0.5) * radius * 0.9, y:y + (Math.random() - 0.3) * radius * 0.4,
+      vx:(Math.random() - 0.5) * 24 + wind * 0.15, vy:-18 - Math.random() * 34,
+      life, max:life, size:radius * (0.18 + Math.random() * 0.2), grow:radius * (0.25 + Math.random() * 0.3),
+      col: o.dirt ? soil[0] : '#4a4a4a' });
+  }
+}
+
+function updateParticles(dt) {
+  if (shake > 0) { shake *= Math.pow(0.004, dt); if (shake < 0.2) shake = 0; }
+  if (!particles.length) return;
+  const pg = Math.max(60, Math.min(420, gravity * 1.6));
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.life -= dt;
+    if (p.life <= 0) { particles.splice(i, 1); continue; }
+    if (p.k === 'smoke') {
+      p.vx *= Math.pow(0.5, dt); p.x += p.vx * dt; p.y += p.vy * dt; p.size += p.grow * dt;
+    } else {
+      p.vy += pg * dt;
+      if (p.k === 'spark') { p.vx *= Math.pow(0.35, dt); }
+      else p.rot += p.vr * dt;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.vy > 0 && p.y >= getTerrainY(p.x)) particles.splice(i, 1);   // lands in the dirt
+    }
+  }
+}
+
+function drawSmoke() {
+  for (const p of particles) {
+    if (p.k !== 'smoke') continue;
+    const t = p.life / p.max;
+    ctx.globalAlpha = 0.38 * t * Math.min(1, (1 - t) * 8);
+    ctx.fillStyle = p.col;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawSparks() {
+  ctx.save();
+  for (const p of particles) {
+    if (p.k === 'smoke') continue;
+    const t = p.life / p.max;
+    if (p.k === 'debris') {
+      ctx.globalAlpha = Math.min(1, t * 2.5);
+      ctx.fillStyle = p.col;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.7);
+      ctx.restore();
+    }
+  }
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.lineCap = 'round';
+  for (const p of particles) {
+    if (p.k !== 'spark') continue;
+    const t = p.life / p.max;
+    ctx.globalAlpha = Math.min(1, t * 1.8);
+    ctx.strokeStyle = p.col;
+    ctx.lineWidth = p.size;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x - p.vx * 0.035, p.y - p.vy * 0.035);   // streak along the velocity
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function tankDeathFx(p) {
+  const y = p.y - TANK_H / 2;
+  explosions.push({ x:p.x, y, radius:44, color:'#f70', life:70, maxLife:70, phase:0 });
+  spawnBlastFx(p.x, y, 44, p.color, { tank:true });
 }
 
 function drawProjectiles() {
@@ -1531,28 +1715,93 @@ function drawProjectiles() {
   }
 }
 
+// Dotted line out of the barrel (longer = more power), a readout, and an X where
+// this player's previous shot first landed, so a miss can be walked in.
+function drawAimGuide(p) {
+  if (animating || p.isAI) return;
+  ctx.save();
+  if (p.lastImpact) {
+    const { x, y } = p.lastImpact;
+    ctx.strokeStyle = p.color; ctx.globalAlpha = 0.75; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - 6, y - 6); ctx.lineTo(x + 6, y + 6);
+    ctx.moveTo(x + 6, y - 6); ctx.lineTo(x - 6, y + 6);
+    ctx.stroke();
+    ctx.font = '9px Courier New'; ctx.textAlign = 'center'; ctx.fillStyle = p.color;
+    ctx.fillText('LAST', x, y - 11);
+  }
+  const rad = p.angle * Math.PI / 180;
+  const dx = Math.cos(Math.PI - rad), dy = -Math.sin(rad);
+  const bx = p.x, by = p.y - TANK_H;
+  const len = 22 + p.power * 0.95;
+  ctx.strokeStyle = p.color; ctx.lineWidth = 2; ctx.globalAlpha = 0.7;
+  ctx.setLineDash([2, 7]); ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(bx + dx * (BARREL_LEN + 4), by + dy * (BARREL_LEN + 4)); ctx.lineTo(bx + dx * len, by + dy * len); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(bx + dx * len, by + dy * len, 3.5, 0, Math.PI * 2); ctx.stroke();
+  ctx.globalAlpha = 0.95; ctx.fillStyle = '#fff'; ctx.font = 'bold 11px Courier New'; ctx.textAlign = 'center';
+  ctx.shadowColor = '#000'; ctx.shadowBlur = 4;
+  ctx.fillText(`${p.angle}° · ${p.power}`, bx + dx * (len + 22), by + dy * (len + 22) + 4);
+  ctx.restore();
+}
+
+// Wind readout on the field itself: arrow length tracks the strength relative to
+// the planet's normal range, so a storm visibly pegs it.
+function drawWindGauge() {
+  if (!gameRunning) return;
+  const planet = PLANETS[activePlanetIdx];
+  const peak = Math.max(1, 40 * planet.windMult);
+  const k = Math.max(-1, Math.min(1, wind / peak));
+  const x = 12, y = 12, w = 112, h = 30;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.strokeStyle = 'rgba(0,255,0,0.5)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, 5) : ctx.rect(x, y, w, h); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#888'; ctx.font = '9px Courier New'; ctx.textAlign = 'left';
+  ctx.fillText('WIND', x + 7, y + 11);
+  ctx.fillStyle = '#ff0'; ctx.font = 'bold 12px Courier New';
+  ctx.fillText(Math.abs(Math.round(wind)) === 0 ? 'CALM' : String(Math.abs(Math.round(wind))), x + 7, y + 24);
+  const cx = x + 74, cy = y + h / 2;
+  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+  ctx.beginPath(); ctx.moveTo(cx - 30, cy); ctx.lineTo(cx + 30, cy); ctx.stroke();
+  if (Math.abs(k) > 0.02) {
+    const tip = cx + k * 30, dir = k > 0 ? 1 : -1;
+    ctx.strokeStyle = ctx.fillStyle = Math.abs(k) > 0.85 ? '#f84' : '#0f0';
+    ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(tip, cy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(tip + dir * 6, cy); ctx.lineTo(tip - dir * 2, cy - 5); ctx.lineTo(tip - dir * 2, cy + 5); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+
 function render() {
   ctx.clearRect(0, 0, W, H);
   drawSky();
   // The earthquake rattles the ground and everything standing on it; the sky
   // stays put so no bare edges creep in.
   ctx.save();
-  if (quakeTicks > 0) {
-    const amp = quakeAmp * (quakeTicks / quakeMax);
-    // Zoom a hair so the shake offset never uncovers the edges of the field
-    const s = 1 + (quakeAmp * 2.2) / Math.max(1, Math.min(W, H));
+  // Quake and big-blast shake share one camera jolt. Zoom a hair so the offset
+  // never uncovers the edges of the field; the sky stays put.
+  const amp = (quakeTicks > 0 ? quakeAmp * (quakeTicks / quakeMax) : 0) + shake;
+  if (amp > 0.1) {
+    const s = 1 + (amp * 2.2) / Math.max(1, Math.min(W, H));
     ctx.translate(W / 2, H / 2); ctx.scale(s, s); ctx.translate(-W / 2, -H / 2);
     ctx.translate((Math.random()*2 - 1) * amp, (Math.random()*2 - 1) * amp);
   }
   drawTerrain();
-  drawExplosions();
+  drawSmoke();
   for (const p of players) drawTank(p);
   // After every tank, so a neighbour can never draw over the marker
   const turnTank = players[currentPlayer];
-  if (gameRunning && turnTank && turnTank.alive) drawTurnMarker(turnTank);
+  if (gameRunning && turnTank && turnTank.alive) {
+    drawAimGuide(turnTank);
+    drawTurnMarker(turnTank);
+  }
+  drawExplosions();
   drawProjectiles();
+  drawSparks();
   drawEventFx();
   ctx.restore();
+  drawWindGauge();
   if (flashAlpha > 0) {
     ctx.save();
     ctx.globalAlpha = Math.min(0.75, flashAlpha);
@@ -1641,7 +1890,7 @@ function updateTankPhysics(dt) {
         if (fallDist >= FALL_DEATH_HEIGHT) {
           p.alive = false;
           p.hp = 0;
-          explosions.push({ x:p.x, y:p.y, radius:40, color:'#f00', life:80, maxLife:80, phase:0 });
+          tankDeathFx(p);
           SoundManager.playTankDeath();
         }
       } else {
@@ -1667,7 +1916,11 @@ function flightLife(speed, minTicks) {
 function explodeAt(cx, cy, wep, ownerId) {
   wep.dirt ? dirtUp(cx, cy, wep.radius) : blastCrater(cx, cy, wep.radius);
   explosions.push({ x:cx, y:cy, radius:wep.radius, color:wep.color, life:45, maxLife:45, phase:0 });
+  spawnBlastFx(cx, cy, wep.radius, wep.color, { dirt: !!wep.dirt });
   SoundManager.playExplosion(wep.name, wep.radius);
+  // Remember where each player's last shot first landed, for the aim guide
+  const shooter = ownerId >= 0 ? players[ownerId] : null;
+  if (shooter && shooter.awaitImpact) { shooter.lastImpact = { x:cx, y:cy }; shooter.awaitImpact = false; }
 
   if (wep.napalm) {
     for (let i = 0; i < 8; i++) {
@@ -1705,7 +1958,7 @@ function explodeAt(cx, cy, wep, ownerId) {
           }
           if (p.alive) {
             p.alive = false;
-            explosions.push({ x:p.x, y:p.y, radius:40, color:'#f00', life:80, maxLife:80, phase:0 });
+            tankDeathFx(p);
             SoundManager.playTankDeath();
             if (owner && p.id !== ownerId) {
               owner.cash += 500;
@@ -1875,7 +2128,8 @@ function aiTakeTurn() {
   p.power = Math.max(8, Math.min(100, solvedPower + Math.round((Math.random()-0.5)*2*lvl.powerVar)));
   syncSliders();
   updateHUD();
-  setTimeout(fire, 700 + Math.random()*500);
+  const tok = gameToken;
+  setTimeout(() => { if (tok === gameToken) fire(); }, 700 + Math.random()*500);
 }
 
 // AI spends cash greedily on preferred weapons for its intelligence level
@@ -2167,7 +2421,7 @@ function drawEventFx() {
 }
 
 function clearEventFx() {
-  bolts = []; drops = []; gusts = [];
+  bolts = []; drops = []; gusts = []; particles = []; shake = 0;
   quakeTicks = 0; flashAlpha = 0; eventHold = 0;
   eventActive = false;
   hideEventBanner();
@@ -2181,6 +2435,7 @@ function fire() {
   const wep = WEAPONS[p.weapon];
   if (p.inventory[p.weapon] <= 0) { showMsg('OUT OF AMMO', 'Choose a different weapon!', false); return; }
   p.inventory[p.weapon]--;
+  p.awaitImpact = true;
   if (p.inventory.every(n => n === 0)) p.outOfAmmo = true;
   animating = true;
   document.getElementById('fire-btn').disabled = true;
@@ -2213,6 +2468,7 @@ let animTime = 0;   // seconds since page load, drives idle animations
 
 function physicsStep(dt) {
   updateEventFx(dt);
+  updateParticles(dt);
 
   for (let i = explosions.length-1; i >= 0; i--) {
     const ex = explosions[i];
@@ -2408,7 +2664,8 @@ function beginPlayerTurn() {
   const fireBtn = document.getElementById('fire-btn');
   if (p.isAI) {
     fireBtn.disabled = true;
-    setTimeout(aiTakeTurn, speedLevel > 0 ? 0 : 800 + Math.random()*400);
+    const tok = gameToken;
+    setTimeout(() => { if (tok === gameToken) aiTakeTurn(); }, speedLevel > 0 ? 0 : 800 + Math.random()*400);
   } else {
     fireBtn.disabled = false;
   }
@@ -2430,7 +2687,7 @@ function buildStandingsHTML(matchWinnerId) {
     const cls = isTop ? 's-top' : isMatchWin ? 's-match-winner' : '';
     return `<tr${cls ? ` class="${cls}"` : ''}>
       <td class="s-rank">${rank + 1}</td>
-      <td class="s-name" style="color:${p.color}">${p.name}${tag}${flag}</td>
+      <td class="s-name" style="color:${p.color}">${esc(p.name)}${tag}${flag}</td>
       <td class="s-score">${p.score}</td>
     </tr>`;
   }).join('');
@@ -2487,7 +2744,7 @@ function showShop(matchWinner, stalemate) {
     div.className = 'shop-pcash';
     div.style.color = p.color;
     const shopTag = p.isAI ? ` [${(AI_LEVELS[p.aiLevel] || AI_LEVELS[0]).name}]` : '';
-    div.innerHTML = `${p.name}${shopTag}<span class="pcash-val" id="pcash-${i}">$${p.cash}</span>`;
+    div.innerHTML = `${esc(p.name)}${shopTag}<span class="pcash-val" id="pcash-${i}">$${p.cash}</span>`;
     cashRow.appendChild(div);
   });
 
@@ -2496,7 +2753,7 @@ function showShop(matchWinner, stalemate) {
   const hdrLen = wide ? 10 : 7;   // the widened panel has room for longer names
   tbl.innerHTML = `<thead><tr>
     <th class="wh">WEAPON</th><th>COST</th>
-    ${players.map((p,i)=>`<th style="color:${p.color}" id="shdr-${i}">${p.name.substring(0,hdrLen)}</th>`).join('')}
+    ${players.map((p,i)=>`<th style="color:${p.color}" id="shdr-${i}">${esc(p.name.substring(0,hdrLen))}</th>`).join('')}
   </tr></thead>`;
   const tbody = document.createElement('tbody');
   WEAPONS.forEach((w, wi) => {
@@ -2595,7 +2852,7 @@ function updateHUD() {
   const aiTag = p.isAI ? ` [${(AI_LEVELS[p.aiLevel] || AI_LEVELS[0]).name.toUpperCase()}]` : '';
   document.getElementById('turn-label').textContent = p.name.toUpperCase() + aiTag;
   document.getElementById('turn-label').style.color = p.color;
-  document.getElementById('hp-val').textContent = p.hp;
+  if (SHOW_HEALTH) document.getElementById('hp-val').textContent = p.hp;
   document.getElementById('cash-val').textContent = p.cash;
   document.getElementById('match-val').textContent = `${matchNum}/${matchesTotal}`;
   document.getElementById('angle-slider').value = p.angle;
@@ -2603,9 +2860,10 @@ function updateHUD() {
   document.getElementById('power-slider').value = p.power;
   document.getElementById('power-val').textContent = p.power;
   const sc = players.map(pl => {
-    const s = pl.name.length > 8 ? pl.name.substring(0,7)+'…' : pl.name;
-    return `<span style="color:${pl.color}">${s}:${pl.score}</span>`;
-  }).join(' ');
+    const nm = pl.name.length > 8 ? pl.name.substring(0,7)+'…' : pl.name;
+    const cls = 'chip' + (pl.id === currentPlayer ? ' chip-turn' : '') + (pl.alive ? '' : ' chip-dead');
+    return `<span class="${cls}" style="color:${pl.color};border-color:${pl.color}">${esc(nm)}<b>${pl.score}</b></span>`;
+  }).join('');
   document.getElementById('scores-hud').innerHTML = sc;
 }
 
@@ -2653,11 +2911,14 @@ document.addEventListener('keydown', e => {
   if (e.target && e.target.classList && e.target.classList.contains('vol-slider')) return;
   if (!gameRunning || animating || players[currentPlayer].isAI) return;
   const p = players[currentPlayer];
-  if      (e.key==='ArrowLeft'||e.key==='a')  { p.angle = Math.max(0, p.angle-2); syncSliders(); }
-  else if (e.key==='ArrowRight'||e.key==='d') { p.angle = Math.min(180, p.angle+2); syncSliders(); }
-  else if (e.key==='[') { p.power = Math.max(5, p.power-2); syncSliders(); }
-  else if (e.key===']') { p.power = Math.min(100, p.power+2); syncSliders(); }
-  else if (e.key===' '||e.key==='Enter') { e.preventDefault(); fire(); }
+  const step = e.shiftKey ? 1 : 2;   // Shift = fine adjust
+  if      (e.key==='ArrowLeft'||e.key==='a')  { e.preventDefault(); p.angle = Math.max(0, p.angle-step); syncSliders(); }
+  else if (e.key==='ArrowRight'||e.key==='d') { e.preventDefault(); p.angle = Math.min(180, p.angle+step); syncSliders(); }
+  else if (e.key==='ArrowDown'||e.key==='['||e.key==='s') { e.preventDefault(); p.power = Math.max(5, p.power-step); syncSliders(); }
+  else if (e.key==='ArrowUp'||e.key===']'||e.key==='w')   { e.preventDefault(); p.power = Math.min(100, p.power+step); syncSliders(); }
+  else if (e.key==='q'||e.key==='Q') cycleWeapon(-1);
+  else if (e.key==='e'||e.key==='E') cycleWeapon(1);
+  else if (e.key===' '||e.key==='Enter') { e.preventDefault(); if (!e.repeat) fire(); }   // a held key must not fire the next turn
 });
 // ± buttons next to the sliders: tap for one step, hold to repeat
 function stepAim(kind, d) {
@@ -2684,6 +2945,20 @@ function stepAim(kind, d) {
 function toggleAux() {
   document.getElementById('controls').classList.toggle('show-aux');
 }
+function cycleWeapon(dir) {
+  const p = players[currentPlayer];
+  const n = WEAPONS.length;
+  for (let i = 1; i <= n; i++) {
+    const idx = (p.weapon + dir * i + n * n) % n;
+    if (p.inventory[idx] > 0) { p.weapon = idx; updateWeaponSelect(); return; }
+  }
+}
+
+function quitToMenu() {
+  if (gameRunning && !confirm('Abandon this game and return to setup?')) return;
+  showSetupScreen();
+}
+
 function syncSliders() {
   const p = players[currentPlayer];
   document.getElementById('angle-slider').value = p.angle;
@@ -2702,6 +2977,7 @@ function resizeCanvas() {
 }
 
 function startMatch() {
+  gameToken++;
   resizeCanvas();
   clearEventFx();
   // Fast-forward is a per-match convenience: every match opens at normal speed
@@ -2716,6 +2992,8 @@ function startMatch() {
     p.vy = 0;
     p.fallStart = null;
     p.outOfAmmo = false;
+    p.lastImpact = null;
+    p.awaitImpact = false;
   });
   activePlanetIdx = setupConfig.gravityMode === 'random'
     ? Math.floor(Math.random() * PLANETS.length)
@@ -2741,7 +3019,8 @@ function startMatch() {
   updateFastBtn();
   if (players[currentPlayer].isAI) {
     document.getElementById('fire-btn').disabled = true;
-    setTimeout(aiTakeTurn, speedLevel > 0 ? 0 : 1000);
+    const tok = gameToken;
+    setTimeout(() => { if (tok === gameToken) aiTakeTurn(); }, speedLevel > 0 ? 0 : 1000);
   }
 }
 
@@ -2819,6 +3098,7 @@ window.addEventListener('resize', () => {
 });
 
 window.onload = () => {
+  document.body.classList.toggle('no-health', !SHOW_HEALTH);
   canvas = document.getElementById('canvas');
   ctx = canvas.getContext('2d');
   dpr = Math.min(window.devicePixelRatio || 1, 2);
